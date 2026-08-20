@@ -122,6 +122,8 @@ p { line-height: 1.55; }
 .beer { font-size: 0; background-image: url("/beer-glass.svg"); background-repeat: no-repeat; background-position: center; background-size: 42px 42px; }
 .beer::before { content: none; }
 .drink-options > div:last-child { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid var(--line); }
+.legend-row:nth-child(1) .dot { background: #ed6a3a; }.legend-row:nth-child(2) .dot { background: #f1a33b; }.legend-row:nth-child(3) .dot { background: #efc86c; }.legend-row:nth-child(4) .dot { background: #9bc49c; }
+.drink-selector { margin-top: 18px; padding: 4px; display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; border-radius: 10px; background: #f3f1eb; }.drink-selector button { min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 800; }.drink-selector button.active { background: #fff; color: var(--coral); box-shadow: 0 3px 10px rgba(37,39,34,.08); }.drink-symbol { flex: none; width: 66px; height: 66px; display: block; border-radius: 50%; background-color: #fce6de; background-repeat: no-repeat; background-position: center; background-size: 42px 42px; }.soft-drink-estimate { padding-top: 18px; }.soft-drink-estimate p { margin: 0; display: flex; flex-direction: column; color: var(--muted); font-size: 10px; }.soft-drink-estimate b { margin-bottom: 3px; color: var(--ink); font-size: 13px; }
 
 /* O convite usa medidas próprias para manter a resposta visível com pouca rolagem. */
 .invite-shell { padding-block: 20px; align-items: start; }
