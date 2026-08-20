@@ -6,6 +6,7 @@ import { EventManager } from "./EventManager";
 export const dynamic = "force-dynamic";
 
 export default async function EventsPage() {
+  // Compatibilidade temporária para projetos cujo cache ainda não conhece address.
   const context = await getAdminContext(); if (!context) redirect("/login");
   let { data, error } = await context.database.from("events").select("id,title,event_date,address,grams_per_person,invite_token").eq("owner_id", context.user.id).order("event_date", { ascending:false });
   if (error?.code === "PGRST204") {

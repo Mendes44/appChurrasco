@@ -6,6 +6,7 @@ import { GuestEditor } from "./GuestEditor";
 export const dynamic = "force-dynamic";
 
 export default async function GuestsPage({ searchParams }: { searchParams: Promise<{ evento?: string }> }) {
+  // A consulta sempre inclui owner_id para isolar os dados de cada organizador.
   const context = await getAdminContext(); if (!context) redirect("/login");
   const { evento } = await searchParams;
   let eventQuery = context.database.from("events").select("id,title").eq("owner_id", context.user.id);

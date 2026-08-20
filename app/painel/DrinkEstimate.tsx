@@ -5,6 +5,8 @@ import { useState } from "react";
 type DrinkType = "chopp" | "lata" | "garrafa";
 
 export function DrinkEstimate({ drinkers, people }: { drinkers: number; people: number }) {
+  // A escolha altera somente a apresentação; todas as opções usam a mesma
+  // referência de 1,5 litro por pessoa que consome cerveja.
   const [type, setType] = useState<DrinkType>("chopp");
   const estimates = {
     chopp: { label:"Chopp", value:`${(drinkers * 1.5).toFixed(1)} L`, detail:"1,5 L por pessoa que bebe", icon:"/beer-glass.svg" },

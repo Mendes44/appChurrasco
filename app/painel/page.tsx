@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 type Guest = { id: string; name: string; companion_name: string | null; party_size: number; is_attending: boolean; drinkers_count: number; brings_own_drink: boolean };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ evento?: string }> }) {
+  // Server Component: dados sensíveis são consultados antes de enviar o HTML.
   if (!isSupabaseConfigured()) redirect("/login");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -32,6 +33,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const { data } = event ? await admin.from("guests").select("id, name, companion_name, party_size, is_attending, drinkers_count, brings_own_drink").eq("event_id", event.id).order("created_at") : { data: [] };
   const { data: invitationData } = event ? await admin.from("invitations").select("id, guest_name, token, responded_at").eq("event_id", event.id).order("created_at", { ascending: false }) : { data: [] };
   const guests = (data ?? []) as Guest[];
+  // Cálculos consideram apenas quem confirmou presença.
   const attending = guests.filter((guest) => guest.is_attending);
   const peopleCount = attending.reduce((total, guest) => total + (guest.party_size || 1), 0);
   const drinkersCount = attending.reduce((total, guest) => total + (guest.drinkers_count ?? 0), 0);

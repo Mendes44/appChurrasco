@@ -7,6 +7,7 @@ export function LoginButton() {
   const [error, setError] = useState("");
 
   async function signIn() {
+    // O Supabase inicia PKCE e retorna ao callback do próprio aplicativo.
     setError("");
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithOAuth({

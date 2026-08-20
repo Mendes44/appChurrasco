@@ -6,6 +6,7 @@ import { useState } from "react";
 type Invitation = { id: string; guest_name: string; token: string; responded_at: string | null };
 
 export function InviteManager({ eventId, invitations }: { eventId: string; invitations: Invitation[] }) {
+  // Estados locais controlam feedback imediato sem recarregar a página inteira.
   const router = useRouter();
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -25,6 +26,7 @@ export function InviteManager({ eventId, invitations }: { eventId: string; invit
   }
 
   async function copyInvitation(token: string) {
+    // A origem atual funciona tanto em localhost quanto no domínio da Vercel.
     await navigator.clipboard.writeText(`${window.location.origin}/convite/${token}`);
     setMessage("Link copiado. Envie somente para esse convidado."); setIsError(false);
   }

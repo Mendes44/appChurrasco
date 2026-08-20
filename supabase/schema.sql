@@ -50,16 +50,17 @@ drop policy if exists "owners read guests" on public.guests;
 drop policy if exists "owners update guests" on public.guests;
 drop policy if exists "owners delete guests" on public.guests;
 
--- Além do proprietário, o banco confere o e-mail autorizado no token assinado.
+-- O banco limita cada usuário às próprias linhas. A lista de administradores é
+-- validada novamente no servidor pela variável ADMIN_EMAIL.
 create policy "owners manage events" on public.events for all
-using (auth.uid() = owner_id and auth.jwt() ->> 'email' = 'marcosmendesm10@gmail.com')
-with check (auth.uid() = owner_id and auth.jwt() ->> 'email' = 'marcosmendesm10@gmail.com');
+using (auth.uid() = owner_id)
+with check (auth.uid() = owner_id);
 create policy "owners read guests" on public.guests for select
-using (auth.jwt() ->> 'email' = 'marcosmendesm10@gmail.com' and exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid()));
+using (exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid()));
 create policy "owners update guests" on public.guests for update
-using (auth.jwt() ->> 'email' = 'marcosmendesm10@gmail.com' and exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid()));
+using (exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid()));
 create policy "owners delete guests" on public.guests for delete
-using (auth.jwt() ->> 'email' = 'marcosmendesm10@gmail.com' and exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid()));
+using (exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid()));
 
 -- Chamada apenas pelo servidor: permite no máximo 10 tentativas por IP/convite/hora.
 create or replace function public.allow_confirmation(p_key text)

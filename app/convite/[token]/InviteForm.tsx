@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 export function InviteForm({ token, guestName, alreadyAnswered, wasAttending, address, eventTitle, eventDate }: { token: string; guestName: string; alreadyAnswered: boolean; wasAttending: boolean; address: string | null; eventTitle: string; eventDate: string }) {
+  // Cada resposta representa o titular e, opcionalmente, um acompanhante.
   const [attending, setAttending] = useState("yes");
   const [hasCompanion, setHasCompanion] = useState(false);
   const [primaryDrinks, setPrimaryDrinks] = useState("yes");
@@ -36,6 +37,7 @@ export function InviteForm({ token, guestName, alreadyAnswered, wasAttending, ad
   }
 
   const mapsUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
+  // O Google Agenda recebe datas UTC no formato compacto exigido pela URL.
   const calendarStart = new Date(eventDate);
   const calendarEnd = new Date(calendarStart.getTime() + 5 * 60 * 60 * 1000);
   const calendarDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");

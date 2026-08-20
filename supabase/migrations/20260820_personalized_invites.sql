@@ -25,8 +25,7 @@ grant select, insert, update, delete on public.invitations to service_role;
 drop policy if exists "owners read invitations" on public.invitations;
 create policy "owners read invitations" on public.invitations for select
 using (
-  auth.jwt() ->> 'email' = 'marcosmendesm10@gmail.com'
-  and exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid())
+  exists (select 1 from public.events e where e.id = event_id and e.owner_id = auth.uid())
 );
 
 -- A trava FOR UPDATE evita duas respostas simultâneas para o mesmo convite.

@@ -6,6 +6,7 @@ import { getAdminContext } from "@/lib/admin";
 
 // Apenas o organizador autenticado consegue gerar links individuais.
 export async function POST(request: Request) {
+  // Convites só podem ser emitidos pelo proprietário autenticado do evento.
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user || !isAdmin(user.email)) return NextResponse.json({ message: "Acesso não autorizado." }, { status: 403 });
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
   if (!event) return NextResponse.json({ message: "Evento não encontrado." }, { status: 404 });
 
   const { data, error } = await admin.from("invitations").insert({ event_id: event.id, guest_name: guestName }).select("token, guest_name").single();
+  // Em vez de criar duplicata, devolva o link já existente para o organizador.
   if (error?.code === "23505") {
     const { data: existing } = await admin.from("invitations").select("token,guest_name").eq("event_id", event.id).ilike("guest_name", guestName).maybeSingle();
     if (existing) return NextResponse.json({ message:"Esse convite já existia. O link está pronto para copiar.", invitation:{ name:existing.guest_name, path:`/convite/${existing.token}` } });

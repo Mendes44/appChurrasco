@@ -2,9 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
+// Cadastro pelo link compartilhável: valida o token, limita abuso por IP e
+// delega a gravação à função SQL para manter a regra atômica no banco.
+
 export async function POST(request: Request) {
+  // Dados públicos nunca são confiáveis; normalize e valide antes do Supabase.
   const body = await request.json(); const token = String(body.token ?? ""); const name = String(body.name ?? "").trim();
   if (!/^[0-9a-f-]{36}$/i.test(token) || name.length < 2 || name.length > 80) return NextResponse.json({ message: "Revise os dados." }, { status: 400 });
+  // A service role fica apenas nesta rota de servidor e nunca é enviada à tela.
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"; const key = createHash("sha256").update(`${ip}|${token}|${new Date().toISOString().slice(0,13)}`).digest("hex");
   const { data: allowed } = await admin.rpc("allow_confirmation", { p_key: key }); if (!allowed) return NextResponse.json({ message: "Muitas tentativas. Aguarde uma hora." }, { status: 429 });

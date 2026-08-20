@@ -6,6 +6,7 @@ import { useState } from "react";
 type Guest = { id:string; name:string; companion_name:string|null; party_size:number; drinkers_count:number; brings_own_drink:boolean };
 
 export function GuestEditor({ guests }: { guests: Guest[] }) {
+  // editing guarda apenas o convidado em edição; a fonte definitiva permanece no banco.
   const router = useRouter();
   const [editing, setEditing] = useState<Guest|null>(null);
   const [message, setMessage] = useState("");

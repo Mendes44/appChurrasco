@@ -7,6 +7,7 @@ import { ShoppingChecklist } from "./ShoppingChecklist";
 export const dynamic = "force-dynamic";
 
 export default async function ShoppingPage({ searchParams }: { searchParams: Promise<{ evento?: string }> }) {
+  // O parâmetro evento mantém compras e convidados sincronizados com o painel escolhido.
   const context = await getAdminContext();
   if (!context) redirect("/login");
   const { evento } = await searchParams;

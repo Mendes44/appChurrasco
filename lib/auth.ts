@@ -1,6 +1,7 @@
-// A autorização usa uma lista explícita; login válido não significa acesso ao painel.
-export const ADMIN_EMAIL = "marcosmendesm10@gmail.com";
+// O e-mail autorizado vem do ambiente e nunca fica gravado no repositório.
+// Login Google válido não significa automaticamente acesso administrativo.
+export const ADMIN_EMAIL = process.env.ADMIN_EMAIL?.trim().toLocaleLowerCase("pt-BR") ?? "";
 
 export function isAdmin(email?: string | null) {
-  return email?.toLocaleLowerCase("pt-BR") === ADMIN_EMAIL;
+  return Boolean(ADMIN_EMAIL) && email?.toLocaleLowerCase("pt-BR") === ADMIN_EMAIL;
 }

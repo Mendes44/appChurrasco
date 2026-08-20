@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation"; import { useState } from "react"; import Link from "next/link";
 type EventItem={id:string;title:string;event_date:string;address:string|null;grams_per_person:number;invite_token:string};
+// Componente cliente responsável pelos formulários de criação, edição e exclusão.
 export function EventManager({events}:{events:EventItem[]}){const router=useRouter();const[editing,setEditing]=useState<EventItem|null>(null);const[message,setMessage]=useState("");
 async function save(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const formElement=event.currentTarget;const form=new FormData(formElement);const body={title:form.get("title"),address:form.get("address"),eventDate:new Date(String(form.get("eventDate"))).toISOString(),gramsPerPerson:Number(form.get("grams"))};const response=await fetch(editing?`/api/eventos/${editing.id}`:"/api/eventos",{method:editing?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const result=await response.json();setMessage(result.message);if(response.ok){formElement.reset();setEditing(null);router.refresh()}}
 async function remove(id:string){if(!confirm("Excluir este churrasco e todos os seus convidados?"))return;await fetch(`/api/eventos/${id}`,{method:"DELETE"});router.refresh()}
