@@ -1,4 +1,4 @@
-# Braza — planejador de churrasco
+# APPBraza - planejador de churrasco
 
 Aplicação web para criar churrascos, enviar convites individuais e calcular carnes, bebidas e itens de compra conforme as confirmações.
 
