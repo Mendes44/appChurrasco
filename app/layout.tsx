@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+// O Next.js carrega e otimiza as fontes no build, sem chamadas externas no navegador.
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
 // Metadados ajudam o projeto a aparecer bem em buscadores e no portfólio.
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
@@ -20,5 +24,5 @@ export const metadata: Metadata = {
 
 // O layout define idioma e fontes para todas as páginas do aplicativo.
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="pt-BR"><body className={`${Geist({ variable: "--font-geist-sans", subsets: ["latin"] }).variable} ${Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] }).variable}`}>{children}</body></html>;
+  return <html lang="pt-BR"><body className={`${geistSans.variable} ${geistMono.variable}`}>{children}</body></html>;
 }

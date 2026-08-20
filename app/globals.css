@@ -6,6 +6,21 @@
 html { scroll-behavior:smooth; }
 body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--font-geist-sans),Arial,sans-serif; }
 button,input,select { font:inherit; } button,a { -webkit-tap-highlight-color:transparent; } button { cursor:pointer; }
+.link-button { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
+.logout { color:var(--muted); text-decoration:none; font-size:12px; font-weight:700; }
+
+/* Páginas públicas isolam login e convite dos dados do painel. */
+.public-shell { min-height:100vh; display:grid; place-items:center; padding:32px; background:radial-gradient(circle at top left,#fff 0,transparent 38%),var(--paper); }
+.landing-card,.auth-card,.invite-card { width:min(620px,100%); text-align:center; }
+.landing-card h1,.auth-card h1,.invite-card h1 { margin-top:18px; }
+.landing-card>p,.auth-card>p,.invite-intro { color:var(--muted); margin:0 auto 28px; }
+.large { width:54px; height:54px; margin:0 auto 22px; font-size:30px; }
+.google-button { width:100%; display:flex; align-items:center; justify-content:center; gap:12px; padding:13px 18px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); font-weight:700; }
+.google-button span{font-size:18px;color:#4285f4}.auth-card{max-width:430px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:42px;box-shadow:0 20px 70px rgba(40,40,35,.08)}.auth-card small{display:block;margin-top:20px;color:#8a8c84}
+.setup-notice{padding:14px;border-radius:9px;background:#fff3db;display:flex;flex-direction:column;gap:4px;color:#806533;font-size:12px}.form-error{color:#b33b2f!important;margin:12px 0 0!important;font-size:12px}
+.invite-card{max-width:560px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:18px;padding:42px;box-shadow:0 20px 70px rgba(40,40,35,.08)}.invite-card>.brand-mark{margin-left:0}.event-details{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px}.event-details span{display:flex;flex-direction:column;padding:14px;border-radius:9px;background:#faf8f2;color:var(--muted);font-size:10px}.event-details b{color:var(--ink);font-size:12px;margin-bottom:4px}
+.invite-form{display:grid;gap:20px}.invite-form>label{display:grid;gap:7px;font-size:12px;font-weight:700}.invite-form input:not([type="radio"]){width:100%;padding:13px;border:1px solid #dcdad3;border-radius:8px}.invite-form fieldset{margin:0;padding:0;border:0}.invite-form legend{font-size:12px;font-weight:700;margin-bottom:8px}.choice-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.choice-row label{display:flex;gap:8px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:8px;font-size:12px}.invite-form input[type="radio"]{accent-color:var(--coral)}.primary:disabled{opacity:.55;cursor:wait}
+.empty-card{width:min(1180px,90vw);margin:0 auto 22px;padding:22px;border-radius:12px;background:#fff3db;color:#705c36}.empty-card h2{margin:0 0 7px}.empty-card p{margin:0;font-size:12px}.guest-table{margin-top:20px}.guest-table>div{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;padding:13px;border-bottom:1px solid var(--line);font-size:12px}.guest-table .table-head{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.08em}.empty-row{color:var(--muted);font-size:12px;text-align:center;padding:20px}
 
 /* Barra superior discreta, inspirada em produtos editoriais contemporâneos. */
 .topbar { height:76px; padding:0 max(5vw,32px); display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); background:rgba(247,246,241,.92); position:sticky; top:0; z-index:20; backdrop-filter:blur(14px); }

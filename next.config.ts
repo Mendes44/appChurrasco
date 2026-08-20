@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Remove a assinatura tecnológica dos cabeçalhos HTTP expostos ao público.
+  poweredByHeader: false,
 };
 
 export default nextConfig;
