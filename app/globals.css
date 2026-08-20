@@ -118,6 +118,49 @@ p { line-height: 1.55; }
   .developer-footer { flex-direction: column; gap: 8px; }
 }
 
+/* Substitui o marcador textual pelo símbolo reconhecível de uma caneca de chopp. */
+.beer { font-size: 0; background-image: url("/beer-glass.svg"); background-repeat: no-repeat; background-position: center; background-size: 42px 42px; }
+.beer::before { content: none; }
+.drink-options > div:last-child { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid var(--line); }
+
+/* O convite usa medidas próprias para manter a resposta visível com pouca rolagem. */
+.invite-shell { padding-block: 20px; align-items: start; }
+.invite-shell .invite-card { padding: 28px 32px; }
+.invite-logo { width: 82px; height: 82px; margin: -8px 0 2px; display: block; object-fit: contain; }
+.invite-shell .invite-card h1 { margin: 7px 0; font-size: clamp(38px, 5vw, 54px); }
+.invite-shell .invite-intro { margin: 0 0 14px; }
+.invite-shell .event-details { margin-bottom: 18px; }
+.invite-shell .invite-form { gap: 14px; }
+.invite-shell .choice-row label { padding: 10px 12px; }
+.invite-shell .invite-form input:not([type="radio"]) { min-height: 42px; }
+.invite-result { min-height: 440px; padding: 36px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
+.invite-result .success-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; background: #e2eee3; color: var(--green); font-size: 30px; font-weight: 900; }
+.invite-result h2 { margin: 0; font-size: clamp(30px, 5vw, 42px); }
+.invite-result p { margin: 4px 0 0; color: var(--muted); }
+.invite-result strong { max-width: 420px; }
+.invite-result-actions { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.invite-result small { margin-top: auto; padding-top: 24px; color: var(--muted); line-height: 1.5; }
+.invite-card:has(> .invite-result) > :not(.invite-result) { display: none; }
+
+@media (max-width: 600px) {
+  .invite-shell { padding: 8px; }
+  .invite-shell .invite-card { padding: 18px 16px; }
+  .invite-logo { width: 68px; height: 68px; margin: -8px auto -3px; }
+  .invite-shell .invite-card > .eyebrow { display: block; text-align: center; }
+  .invite-shell .invite-card h1 { margin: 5px 0; font-size: 34px; text-align: center; }
+  .invite-shell .invite-intro { margin-bottom: 10px; text-align: center; font-size: 13px; }
+  .invite-shell .event-details { margin-bottom: 13px; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .invite-shell .event-details span { padding: 9px; font-size: 9px; }
+  .invite-shell .event-details b { font-size: 10px; }
+  .invite-shell .invite-form { gap: 11px; }
+  .invite-shell .choice-row { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .invite-shell .choice-row label { padding: 9px 8px; font-size: 11px; }
+  .invite-shell .privacy { margin-top: 11px; font-size: 10px; }
+  .invite-result { min-height: calc(100vh - 150px); padding: 26px 4px; }
+  .invite-result-actions { width: 100%; display: grid; grid-template-columns: 1fr; }
+  .invite-result-actions a { width: 100%; }
+}
+
 /* Identidade visual e controles administrativos da segunda revisão. */
 .app-logo { width: 46px; height: 46px; object-fit: contain; }
 .entry-logo { width: 160px; height: 160px; margin: -18px auto 4px; display: block; object-fit: contain; }

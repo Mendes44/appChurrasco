@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 
-export function InviteForm({ token, guestName, alreadyAnswered }: { token: string; guestName: string; alreadyAnswered: boolean }) {
+export function InviteForm({ token, guestName, alreadyAnswered, wasAttending, address, eventTitle, eventDate }: { token: string; guestName: string; alreadyAnswered: boolean; wasAttending: boolean; address: string | null; eventTitle: string; eventDate: string }) {
   const [attending, setAttending] = useState("yes");
   const [hasCompanion, setHasCompanion] = useState(false);
   const [primaryDrinks, setPrimaryDrinks] = useState("yes");
   const [companionDrinks, setCompanionDrinks] = useState("no");
   const [status, setStatus] = useState(alreadyAnswered ? "Este convite já foi respondido." : "");
   const [sending, setSending] = useState(false);
+  const [success, setSuccess] = useState(false);
   const someoneDoesNotDrink = primaryDrinks === "no" || (hasCompanion && companionDrinks === "no");
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -31,9 +32,18 @@ export function InviteForm({ token, guestName, alreadyAnswered }: { token: strin
     const result = await response.json();
     setStatus(result.message ?? "Não foi possível enviar sua resposta.");
     setSending(false);
+    if (response.ok) setSuccess(true);
   }
 
-  if (alreadyAnswered) return <div className="answered-notice"><b>Resposta já registrada</b><span>Se precisar alterar algo, fale com o organizador.</span></div>;
+  const mapsUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
+  const calendarStart = new Date(eventDate);
+  const calendarEnd = new Date(calendarStart.getTime() + 5 * 60 * 60 * 1000);
+  const calendarDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${calendarDate(calendarStart)}/${calendarDate(calendarEnd)}&details=${encodeURIComponent("Churrasco organizado pelo Braza.")}&location=${encodeURIComponent(address ?? "Local a confirmar")}`;
+
+  if (success) return <div className="invite-result"><div className="success-icon">✓</div><span className="eyebrow">CONFIRMAÇÃO</span><h2>RESPOSTA ENVIADA<br/>COM SUCESSO!</h2>{attending === "yes" && <><p>Nos vemos em {eventTitle}!</p>{address&&<strong>{address}</strong>}<div className="invite-result-actions">{mapsUrl&&<a className="secondary link-button" href={mapsUrl} target="_blank" rel="noreferrer">Abrir no Google Maps</a>}<a className="primary link-button" href={calendarUrl} target="_blank" rel="noreferrer">Adicionar ao Google Agenda</a></div></>}<small>Para alterar sua resposta, entre em contato com o responsável pelo churrasco.</small></div>;
+
+  if (alreadyAnswered) return <div className="invite-result"><div className="success-icon">✓</div><h2>RESPOSTA JÁ REGISTRADA</h2>{wasAttending&&<><p>Você confirmou presença em {eventTitle}.</p>{address&&<strong>{address}</strong>}<div className="invite-result-actions">{mapsUrl&&<a className="secondary link-button" href={mapsUrl} target="_blank" rel="noreferrer">Abrir no Google Maps</a>}<a className="primary link-button" href={calendarUrl} target="_blank" rel="noreferrer">Adicionar ao Google Agenda</a></div></>}<small>Para alterar sua resposta, entre em contato com o responsável pelo churrasco.</small></div>;
 
   return <form className="invite-form" onSubmit={submit}>
     <label>Convite individual<input value={guestName} disabled aria-label="Nome do convidado" /></label>
