@@ -2,14 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
-type Confirmation = { token?: unknown; name?: unknown; attending?: unknown; drinks?: unknown; bringsOwnDrink?: unknown };
+type Confirmation = { token?: unknown; attending?: unknown; companionName?: unknown; primaryDrinks?: unknown; companionDrinks?: unknown; bringsOwnDrink?: unknown };
 
 // Esta rota mantém a chave administrativa fora do navegador e valida todo o conteúdo.
 export async function POST(request: Request) {
   try {
     const body = await request.json() as Confirmation;
-    const name = typeof body.name === "string" ? body.name.trim().replace(/\s+/g, " ") : "";
-    if (typeof body.token !== "string" || !/^[0-9a-f-]{36}$/i.test(body.token) || name.length < 2 || name.length > 80 || typeof body.attending !== "boolean" || typeof body.drinks !== "boolean" || typeof body.bringsOwnDrink !== "boolean") {
+    const companionName = typeof body.companionName === "string" ? body.companionName.trim().replace(/\s+/g, " ") : "";
+    if (typeof body.token !== "string" || !/^[0-9a-f-]{36}$/i.test(body.token) || companionName.length > 80 || typeof body.attending !== "boolean" || typeof body.primaryDrinks !== "boolean" || typeof body.companionDrinks !== "boolean" || typeof body.bringsOwnDrink !== "boolean") {
       return NextResponse.json({ message: "Confira os dados e tente novamente." }, { status: 400 });
     }
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) return NextResponse.json({ message: "As confirmações ainda não foram ativadas." }, { status: 503 });
@@ -20,11 +20,19 @@ export async function POST(request: Request) {
     const requestKey = createHash("sha256").update(`${ip}|${body.token}|${hour}`).digest("hex");
     const { data: allowed } = await supabase.rpc("allow_confirmation", { p_key: requestKey });
     if (!allowed) return NextResponse.json({ message: "Muitas tentativas. Aguarde um pouco e tente novamente." }, { status: 429 });
-    const { data: event } = await supabase.from("events").select("id").eq("invite_token", body.token).single();
-    if (!event) return NextResponse.json({ message: "Este convite não é válido." }, { status: 404 });
-
-    const { error } = await supabase.from("guests").insert({ event_id: event.id, name, is_attending: body.attending, drinks: body.attending && body.drinks, brings_own_drink: body.attending && !body.drinks && body.bringsOwnDrink });
-    if (error?.code === "23505") return NextResponse.json({ message: "Esse nome já respondeu ao convite." }, { status: 409 });
+    const { data: invitation } = await supabase.from("invitations").select("revoked_at, responded_at").eq("token", body.token).maybeSingle();
+    if (!invitation || invitation.revoked_at) return NextResponse.json({ message: "Este convite foi cancelado." }, { status: 404 });
+    if (invitation.responded_at) return NextResponse.json({ message: "Este convite já foi respondido." }, { status: 409 });
+    const { error } = await supabase.rpc("submit_personal_invitation", {
+      p_token: body.token,
+      p_attending: body.attending,
+      p_companion_name: companionName || null,
+      p_primary_drinks: body.attending && body.primaryDrinks,
+      p_companion_drinks: body.attending && Boolean(companionName) && body.companionDrinks,
+      p_brings_own_drink: body.attending && body.bringsOwnDrink,
+    });
+    if (error?.message.includes("already_answered")) return NextResponse.json({ message: "Este convite já foi respondido." }, { status: 409 });
+    if (error?.message.includes("invalid_invitation")) return NextResponse.json({ message: "Este convite não é válido." }, { status: 404 });
     if (error) throw error;
     return NextResponse.json({ message: "Resposta registrada. Obrigado!" });
   } catch {

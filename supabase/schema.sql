@@ -77,6 +77,9 @@ $$;
 revoke all on function public.allow_confirmation(text) from public, anon, authenticated;
 grant execute on function public.allow_confirmation(text) to service_role;
 
+-- A evolução para convites individuais fica isolada em uma migração idempotente.
+-- Execute também: supabase/migrations/20260820_personalized_invites.sql
+
 -- Crie o primeiro evento depois de entrar uma vez com Google e copiar seu user id.
 -- insert into public.events(owner_id,title,event_date)
 -- values ('SEU_AUTH_USER_ID','Churrasco de sábado','2026-08-23 13:00:00-03');

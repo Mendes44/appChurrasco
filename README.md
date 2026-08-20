@@ -1,6 +1,17 @@
-# Brasa
+# Braza
 
 Aplicativo em Next.js para organizar churrascos. O convidado recebe apenas um link público de confirmação; o painel com nomes e quantidades exige login Google e aceita exclusivamente `marcosmendesm10@gmail.com`.
+
+## Funcionalidades
+
+- criação, edição e exclusão de churrascos;
+- data, horário, endereço e gramas de carne configuráveis;
+- convites individuais canceláveis e com novo link;
+- link geral para cadastro de titular + um acompanhante;
+- edição administrativa das respostas;
+- painel e páginas públicas responsivos;
+- lista completa de compras com carnes, acompanhamentos, carvão, gelo e descartáveis;
+- cálculos alternativos para chopp, latas e garrafas.
 
 ## Executar localmente
 
@@ -15,12 +26,13 @@ Abra `http://localhost:3000`. O Node.js 22 ou superior é suportado.
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
 2. Abra **SQL Editor**, cole todo o conteúdo de `supabase/schema.sql` e execute.
-3. Em **Authentication → Providers → Google**, habilite o Google.
-4. No Google Cloud Console, crie credenciais OAuth do tipo Web e copie Client ID e Client Secret para o Supabase.
-5. Em **Authentication → URL Configuration**, use `http://localhost:3000` como Site URL durante o desenvolvimento e adicione `http://localhost:3000/auth/callback` em Redirect URLs.
-6. Copie `.env.example` para `.env.local` e preencha URL, chave anon e chave service role do projeto.
-7. Rode o projeto, entre uma vez com `marcosmendesm10@gmail.com` e copie o ID desse usuário em **Authentication → Users**.
-8. No SQL Editor, execute:
+3. Em projetos existentes, execute também os arquivos de `supabase/migrations` em ordem de nome.
+4. Em **Authentication → Providers → Google**, habilite o Google.
+5. No Google Cloud Console, crie credenciais OAuth do tipo Web e copie Client ID e Client Secret para o Supabase.
+6. Em **Authentication → URL Configuration**, use `http://localhost:3000` como Site URL durante o desenvolvimento e adicione `http://localhost:3000/auth/callback` em Redirect URLs.
+7. Copie `.env.example` para `.env.local` e preencha URL, chave anon e chave service role do projeto.
+8. Rode o projeto, entre uma vez com `marcosmendesm10@gmail.com` e copie o ID desse usuário em **Authentication → Users**.
+9. No SQL Editor, execute:
 
 ```sql
 insert into public.events(owner_id, title, event_date)

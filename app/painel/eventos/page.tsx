@@ -1,0 +1,17 @@
+import { AdminHeader } from "@/components/AdminHeader";
+import { getAdminContext } from "@/lib/admin";
+import { redirect } from "next/navigation";
+import { EventManager } from "./EventManager";
+
+export const dynamic = "force-dynamic";
+
+export default async function EventsPage() {
+  const context = await getAdminContext(); if (!context) redirect("/login");
+  let { data, error } = await context.database.from("events").select("id,title,event_date,address,grams_per_person,invite_token").eq("owner_id", context.user.id).order("event_date", { ascending:false });
+  if (error?.code === "PGRST204") {
+    const fallback = await context.database.from("events").select("id,title,event_date,grams_per_person,invite_token").eq("owner_id", context.user.id).order("event_date", { ascending:false });
+    data = (fallback.data ?? []).map((event) => ({ ...event, address:null })); error = fallback.error;
+  }
+  if (error) console.error("events_list_failed", error.code);
+  return <main><AdminHeader active="eventos"/><section className="page-heading compact-heading"><span className="eyebrow">ADMINISTRAÇÃO</span><h1>Seus churrascos</h1><p>Escolha um evento ou crie um novo.</p></section><EventManager events={data??[]}/></main>;
+}

@@ -1,5 +1,5 @@
 {
-  "name": "brasa-churrasco",
+  "name": "braza-churrasco",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -10,12 +10,14 @@
     "build": "next build",
     "start": "next start",
     "test": "npm run build",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern work",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
+    "exceljs": "^3.4.0",
+    "jspdf": "^4.2.1",
     "next": "16.3.1",
     "react": "19.2.6",
     "react-dom": "19.2.6"
@@ -35,6 +37,9 @@
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.3"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   },
   "type": "module"
 }
