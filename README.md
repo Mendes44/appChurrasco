@@ -11,11 +11,15 @@ O projeto foi construído com foco em portfólio: autenticação Google, autoriz
 - data, horário, endereço e quantidade de carne configuráveis;
 - convites individuais para titular e um acompanhante;
 - confirmação de presença e consumo de bebidas;
+- telefone do convidado, com edição administrativa;
 - painel atualizado automaticamente;
 - edição e exclusão administrativa de respostas;
 - cálculos de carnes, acompanhamentos, chopp, latas e garrafas;
 - checklist de compras salvo no navegador;
 - exportação da lista em PDF e Excel;
+- despesas gerais e de cerveja com rateio separado;
+- comprovantes compactados em armazenamento privado;
+- relatório individual e mensagem pronta para WhatsApp;
 - integração com Google Maps e Google Agenda;
 - layout responsivo com menu mobile.
 
@@ -76,7 +80,8 @@ Acesse [http://localhost:3000](http://localhost:3000).
 2. Abra **SQL Editor**.
 3. Execute todo o arquivo `supabase/schema.sql`.
 4. Execute, pela ordem do nome, os arquivos de `supabase/migrations`.
-5. Confirme em **Table Editor** que existem as tabelas `events`, `guests`, `invitations` e `confirmation_attempts`.
+5. Confirme em **Table Editor** que existem as tabelas `events`, `guests`, `invitations`, `confirmation_attempts` e `expenses`.
+6. Em **Storage**, confirme que o bucket privado `receipts` foi criado.
 
 Os scripts são idempotentes: as instruções `if not exists` permitem executá-los novamente durante a configuração.
 
@@ -123,12 +128,15 @@ Um avaliador pode testar o projeto desta forma:
 2. Criar um churrasco com nome, data, endereço e gramas por pessoa.
 3. Criar um convite individual e copiar o link.
 4. Abrir o link em janela anônima.
-5. Confirmar presença com ou sem acompanhante.
+5. Informar telefone e confirmar presença com ou sem acompanhante.
 6. Voltar ao painel e aguardar a atualização automática.
 7. Gerenciar a resposta do convidado.
 8. Conferir os cálculos e marcar itens na lista de compras.
 9. Exportar a lista em PDF e Excel.
-10. Reabrir o convite para testar Maps e Google Agenda.
+10. Registrar despesas gerais e de cerveja, anexando um comprovante.
+11. Conferir quem realmente compareceu e validar o rateio.
+12. Abrir a mensagem individual no WhatsApp.
+13. Reabrir o convite para testar Maps e Google Agenda.
 
 ## 5. Publicação na Vercel
 
@@ -196,5 +204,6 @@ Os comentários no código explicam decisões de segurança e regras de negócio
 - UUIDs para links compartilháveis;
 - restrições e índices únicos no PostgreSQL;
 - dados pessoais ausentes do repositório.
+- comprovantes em bucket privado, acessados por URL assinada temporária;
 
 Para ambientes públicos com grande volume, recomenda-se adicionar proteção contra robôs, como Cloudflare Turnstile, e observabilidade de erros.
