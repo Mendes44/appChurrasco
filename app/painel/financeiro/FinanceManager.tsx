@@ -133,20 +133,35 @@ export function FinanceManager({
     if (!guest.phone) return null;
 
     let digits = guest.phone.replace(/\D/g, "");
+    if (digits.length <= 11) digits = `55${digits}`;
 
-    if (digits.length <= 11){
-       digits = `55${digits}`;
-    };
+    // Os subtotais explicam a cobrança sem obrigar o convidado a recalcular valores por pessoa.
+    const generalShare = Math.round(generalPerPerson * guest.party_size);
+    const beerShare = guest.cents - generalShare;
+    const companionDetails = guest.party_size > 1
+      ? "Este valor já inclui você e seu acompanhante."
+      : "Este valor corresponde à sua participação no Churras.";
+    const beerDetails = guest.drinkers_count > 0
+      ? `\n• Cerveja: ${money(beerShare)}`
+      : "";
+    const pixDetails = pixKey
+      ? `\n\n*Pagamento via Pix*\nChave: ${pixKey}${pixHolder ? `\nTitular: ${pixHolder}` : ""}`
+      : "";
 
-    const beerDetails = guest.drinkers_count ? `\nCerveja: ${money(beerPerDrinker)} por pessoa que bebeu.` : "";
+    // O WhatsApp interpreta textos entre asteriscos como negrito.
+    const text = `Olá, ${guest.name}! Tudo bem?
 
-    //Pix so aparece quando foi cadastrado no evento
-    const pixDetails = pixKey ? `\n\nPix para pagamento: ${pixKey}${pixHolder ? `\nTitular: ${pixHolder}` : ""}` : "";
+O rateio do ${eventTitle} foi concluído.
 
-   const text = `Olá, ${guest.name}! Tudo bem?
-O rateio do ${eventTitle} ficou em ${money(guest.cents)} para você${guest.party_size > 1 ? " e seu acompanhante" : ""}. 
-Despesas gerais: ${money(generalPerPerson)} por pessoa.${beerDetails}${pixDetails}`;
-  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+*Valor total a pagar: ${money(guest.cents)}*
+${companionDetails}
+
+Resumo do seu rateio:
+• Churrasco: ${money(generalShare)}${beerDetails}${pixDetails}
+
+Obrigado!`;
+
+    return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
   }
 
   return (
