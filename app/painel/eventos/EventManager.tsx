@@ -1,9 +1,179 @@
 "use client";
-import { useRouter } from "next/navigation"; import { useState } from "react"; import Link from "next/link";
-type EventItem={id:string;title:string;event_date:string;address:string|null;grams_per_person:number;invite_token:string};
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import Link from "next/link";
+type EventItem = {
+  id: string;
+  title: string;
+  event_date: string;
+  address: string | null;
+  grams_per_person: number;
+  invite_token: string;
+  pix_key: string | null;
+  pix_holder: string | null;
+};
 // Componente cliente responsável pelos formulários de criação, edição e exclusão.
-export function EventManager({events}:{events:EventItem[]}){const router=useRouter();const[editing,setEditing]=useState<EventItem|null>(null);const[message,setMessage]=useState("");
-async function save(event:React.FormEvent<HTMLFormElement>){event.preventDefault();const formElement=event.currentTarget;const form=new FormData(formElement);const body={title:form.get("title"),address:form.get("address"),eventDate:new Date(String(form.get("eventDate"))).toISOString(),gramsPerPerson:Number(form.get("grams"))};const response=await fetch(editing?`/api/eventos/${editing.id}`:"/api/eventos",{method:editing?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const result=await response.json();setMessage(result.message);if(response.ok){formElement.reset();setEditing(null);router.refresh()}}
-async function remove(id:string){if(!confirm("Excluir este churrasco e todos os seus convidados?"))return;await fetch(`/api/eventos/${id}`,{method:"DELETE"});router.refresh()}
-function localDate(value:string){const date=new Date(value);return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16)}
-return <div className="management-grid"><section className="card"><span className="eyebrow">{editing?"EDITAR EVENTO":"NOVO EVENTO"}</span><h2>{editing?`Editar ${editing.title}`:"Criar churrasco"}</h2><form className="admin-form" key={editing?.id??"novo"} onSubmit={save}><label>Nome do evento<input name="title" required minLength={3} maxLength={100} defaultValue={editing?.title} placeholder="Ex.: Churrasco de aniversário"/></label><label>Data e horário<input type="datetime-local" name="eventDate" required defaultValue={editing?localDate(editing.event_date):""}/></label><label>Endereço<input name="address" defaultValue={editing?.address??""}/></label><label>Gramas por pessoa<input type="number" name="grams" min="200" max="1000" defaultValue={editing?.grams_per_person??350}/></label><div className="form-actions"><button className="primary">{editing?"Salvar alterações":"Criar evento"}</button>{editing&&<button type="button" className="secondary" onClick={()=>setEditing(null)}>Cancelar</button>}</div>{message&&<p className="manager-message">{message}</p>}</form></section><section className="card"><span className="eyebrow">SEUS EVENTOS</span><h2>Churrascos</h2><div className="event-list">{events.map(item=><article key={item.id}><div><b>{item.title}</b><small>{new Date(item.event_date).toLocaleString("pt-BR")} · {item.address||"Sem endereço"}</small></div><div className="row-actions"><Link className="primary link-button" href={`/painel?evento=${item.id}`}>Abrir painel</Link><button className="text-button" onClick={()=>setEditing(item)}>Editar</button><button className="danger-button" onClick={()=>remove(item.id)}>Excluir</button></div></article>)}</div></section></div>}
+export function EventManager({ events }: { events: EventItem[] }) {
+  const router = useRouter();
+  const [editing, setEditing] = useState<EventItem | null>(null);
+  const [message, setMessage] = useState("");
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const body = {
+      title: form.get("title"),
+      address: form.get("address"),
+      eventDate: new Date(String(form.get("eventDate"))).toISOString(),
+      gramsPerPerson: Number(form.get("grams")),
+      pixKey: form.get("pixKey"),
+      pixHolder: form.get("pixHolder"),
+    };
+    const response = await fetch(
+      editing ? `/api/eventos/${editing.id}` : "/api/eventos",
+      {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const result = await response.json();
+    setMessage(result.message);
+    if (response.ok) {
+      formElement.reset();
+      setEditing(null);
+      router.refresh();
+    }
+  }
+  async function remove(id: string) {
+    if (!confirm("Excluir este churrasco e todos os seus convidados?")) return;
+    await fetch(`/api/eventos/${id}`, { method: "DELETE" });
+    router.refresh();
+  }
+  function localDate(value: string) {
+    const date = new Date(value);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  }
+  return (
+    <div className="management-grid">
+      <section className="card">
+        <span className="eyebrow">
+          {editing ? "EDITAR EVENTO" : "NOVO EVENTO"}
+        </span>
+        <h2>{editing ? `Editar ${editing.title}` : "Criar churrasco"}</h2>
+        <form
+          className="admin-form"
+          key={editing?.id ?? "novo"}
+          onSubmit={save}
+        >
+          <label>
+            Nome do evento
+            <input
+              name="title"
+              required
+              minLength={3}
+              maxLength={100}
+              defaultValue={editing?.title}
+              placeholder="Ex.: Churrasco de aniversário"
+            />
+          </label>
+          <label>
+            Data e horário
+            <input
+              type="datetime-local"
+              name="eventDate"
+              required
+              defaultValue={editing ? localDate(editing.event_date) : ""}
+            />
+          </label>
+          <label>
+            Endereço
+            <input name="address" defaultValue={editing?.address ?? ""} />
+          </label>
+          <label>
+            Chave Pix
+            <input
+                name="pixKey"
+                maxLength={120}
+                defaultValue={editing?.pix_key ?? ""}
+                placeholder="CPF, telefone, email ou chave aleatória"
+            />
+          </label>
+          <label>
+            Titular do PIX
+            <input 
+                name="pixHolder"
+                maxLength={120}
+                defaultValue={editing?.pix_holder ?? ""}
+                placeholder="Nome do Titular da conta"
+            />
+          </label>
+          <label>
+            Gramas por pessoa
+            <input
+              type="number"
+              name="grams"
+              min="200"
+              max="1000"
+              defaultValue={editing?.grams_per_person ?? 350}
+            />
+          </label>
+          <div className="form-actions">
+            <button className="primary">
+              {editing ? "Salvar alterações" : "Criar evento"}
+            </button>
+            {editing && (
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setEditing(null)}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
+          {message && <p className="manager-message">{message}</p>}
+        </form>
+      </section>
+      <section className="card">
+        <span className="eyebrow">SEUS EVENTOS</span>
+        <h2>Churrascos</h2>
+        <div className="event-list">
+          {events.map((item) => (
+            <article key={item.id}>
+              <div>
+                <b>{item.title}</b>
+                <small>
+                  {new Date(item.event_date).toLocaleString("pt-BR")} ·{" "}
+                  {item.address || "Sem endereço"}
+                </small>
+              </div>
+              <div className="row-actions">
+                <Link
+                  className="primary link-button"
+                  href={`/painel?evento=${item.id}`}
+                >
+                  Abrir painel
+                </Link>
+                <button
+                  className="text-button"
+                  onClick={() => setEditing(item)}
+                >
+                  Editar
+                </button>
+                <button
+                  className="danger-button"
+                  onClick={() => remove(item.id)}
+                >
+                  Excluir
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
