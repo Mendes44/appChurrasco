@@ -144,7 +144,8 @@ export function FinanceManager({
     const pixDetails = pixKey ? `\n\nPix para pagamento: ${pixKey}${pixHolder ? `\nTitular: ${pixHolder}` : ""}` : "";
 
    const text = `Olá, ${guest.name}! Tudo bem?
-O rateio do ${eventTitle} ficou em ${money(guest.cents)} para você${guest.party_size > 1 ? " e seu acompanhante" : ""}. Despesas gerais: ${money(generalPerPerson)} por pessoa.${beerDetails}${pixDetails}`;
+O rateio do ${eventTitle} ficou em ${money(guest.cents)} para você${guest.party_size > 1 ? " e seu acompanhante" : ""}. 
+Despesas gerais: ${money(generalPerPerson)} por pessoa.${beerDetails}${pixDetails}`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
   }
 
