@@ -2,6 +2,7 @@ import { AdminHeader } from "@/components/AdminHeader";
 import { getAdminContext } from "@/lib/admin";
 import { redirect } from "next/navigation";
 import { GuestEditor } from "./GuestEditor";
+import { InviteManager } from "../InviteManager";
 
 export const dynamic = "force-dynamic";
 
@@ -14,5 +15,6 @@ export default async function GuestsPage({ searchParams }: { searchParams: Promi
   const { data: events } = await eventQuery.order("created_at", { ascending:false }).limit(1);
   const event = events?.[0];
   const { data } = event ? await context.database.from("guests").select("id,name,phone,companion_name,party_size,drinkers_count,brings_own_drink,attended").eq("event_id", event.id).order("created_at") : { data:[] };
-  return <main><AdminHeader active="convidados" eventId={event?.id}/><section className="page-heading"><span className="eyebrow">{event?.title??"EVENTO"}</span><h1>Convidados</h1><p>Corrija respostas quando alguém mudar de planos.</p></section><GuestEditor guests={data??[]}/></main>;
+  const { data:invitations } = event ? await context.database.from("invitations").select("id,guest_name,token,responded_at").eq("event_id",event.id).order("created_at",{ascending:false}) : {data:[]};
+  return <main><AdminHeader active="convidados" eventId={event?.id}/><section className="page-heading"><span className="eyebrow">{event?.title??"EVENTO"}</span><h1>Convidados</h1><p>Crie convites e corrija respostas quando alguém mudar de planos.</p></section>{event&&<InviteManager eventId={event.id} invitations={invitations??[]} defaultOpen/>}<GuestEditor guests={data??[]}/></main>;
 }

@@ -25,7 +25,7 @@ export default async function FinancePage({
   const { data: guestData } = event
     ? await context.database
         .from("guests")
-        .select("id,name,phone,party_size,drinkers_count,is_attending,attended")
+        .select("id,name,phone,party_size,drinkers_count,is_attending,attended,paid_at")
         .eq("event_id", event.id)
         .order("created_at")
     : { data: [] };

@@ -18,7 +18,9 @@ O projeto foi construído com foco em portfólio: autenticação Google, autoriz
 - checklist de compras salvo no navegador;
 - exportação da lista em PDF e Excel;
 - despesas gerais e de cerveja com rateio separado;
+- controle de pagamentos pendentes e confirmados;
 - comprovantes compactados em armazenamento privado;
+- captura de notas diretamente pela lista de compras;
 - relatório individual e mensagem pronta para WhatsApp;
 - integração com Google Maps e Google Agenda;
 - layout responsivo com menu mobile.

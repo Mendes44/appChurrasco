@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { compressReceipt } from "@/lib/compress-receipt";
 
 
 export type Expense = {
@@ -19,31 +20,13 @@ export type FinanceGuest = {
   drinkers_count: number;
   is_attending: boolean;
   attended: boolean | null;
+  paid_at: string | null;
 };
 
 const money = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     cents / 100,
   );
-
-// Reduz a foto no navegador para economizar armazenamento e transferência.
-async function compressReceipt(file: File) {
-  if (file.size <= 450_000) return file;
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.78),
-  );
-  if (!blob) throw new Error("compression_failed");
-  return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.jpg`, {
-    type: "image/jpeg",
-  });
-}
 
 export function FinanceManager({
   eventId,
@@ -126,6 +109,12 @@ export function FinanceManager({
     const response = await fetch(`/api/despesas/${id}`, { method: "DELETE" });
     const result = await response.json();
     setMessage(result.message);
+    if (response.ok) router.refresh();
+  }
+
+  async function setPaid(guest: FinanceGuest, paid: boolean) {
+    const response = await fetch(`/api/pagamentos/${guest.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ paid }) });
+    const result = await response.json(); setMessage(result.message);
     if (response.ok) router.refresh();
   }
 
@@ -311,20 +300,10 @@ Obrigado!`;
                   <small>
                     {guest.party_size} pessoa(s) · {guest.drinkers_count} bebem
                   </small>
+                  <small className={guest.paid_at?"payment-paid":"payment-pending"}>{guest.paid_at?`Pago em ${new Date(guest.paid_at).toLocaleDateString("pt-BR")}`:"Pagamento pendente"}</small>
                 </span>
                 <strong>{money(guest.cents)}</strong>
-                {url ? (
-                  <a
-                    className="primary link-button"
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Enviar no WhatsApp
-                  </a>
-                ) : (
-                  <span className="missing-phone">Cadastre o telefone</span>
-                )}
+                <div className="charge-actions">{url ? <a className="primary link-button" href={url} target="_blank" rel="noreferrer">Enviar no WhatsApp</a> : <span className="missing-phone">Cadastre o telefone</span>}<button className={guest.paid_at?"secondary":"payment-button"} type="button" onClick={()=>setPaid(guest,!guest.paid_at)}>{guest.paid_at?"Marcar pendente":"Marcar como pago"}</button></div>
               </div>
             );
           })}

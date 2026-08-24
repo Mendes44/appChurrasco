@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Guest = { id:string; name:string; phone:string|null; companion_name:string|null; party_size:number; drinkers_count:number; brings_own_drink:boolean; attended:boolean|null };
 
@@ -10,6 +10,10 @@ export function GuestEditor({ guests }: { guests: Guest[] }) {
   const [editing, setEditing] = useState<Guest|null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const editFormRef = useRef<HTMLFormElement>(null);
+
+  // Assim que o formulário aparece, posiciona a tela nele inclusive no celular.
+  useEffect(()=>{if(editing)editFormRef.current?.scrollIntoView({behavior:"smooth",block:"start"});},[editing]);
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!editing) return;
@@ -34,7 +38,7 @@ export function GuestEditor({ guests }: { guests: Guest[] }) {
       <div className="row-actions"><button className="primary" type="button" onClick={()=>{setEditing(guest);setMessage("")}}>Gerenciar</button><button className="danger-button" type="button" onClick={()=>remove(guest)}>Excluir</button></div>
     </article>)}</div>
     {!guests.length && <p className="empty-row">Nenhuma resposta recebida.</p>}
-    {editing && <form className="admin-form edit-response" key={editing.id} onSubmit={save}>
+    {editing && <form className="admin-form edit-response" id="editar-convidado" ref={editFormRef} key={editing.id} onSubmit={save}>
       <span className="eyebrow">GERENCIAR CONVIDADO</span><h2>Editar tudo</h2>
       <label>Nome do titular<input name="name" required minLength={2} maxLength={80} defaultValue={editing.name}/></label>
       <label>Telefone com DDD<input type="tel" name="phone" minLength={10} maxLength={20} inputMode="tel" defaultValue={editing.phone??""} placeholder="(31) 99999-9999"/></label>
