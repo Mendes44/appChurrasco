@@ -13,10 +13,12 @@ export async function POST(request: Request) {
   const description = String(form.get("description") ?? "").trim();
   const category = String(form.get("category") ?? "");
   const amountCents = Math.round(Number(form.get("amount")) * 100);
+  const notes = String(form.get("notes") ?? "").trim();
   const receipt = form.get("receipt");
-  if (!/^[0-9a-f-]{36}$/i.test(eventId) || description.length < 2 || description.length > 120 || !["general","beer"].includes(category) || !Number.isSafeInteger(amountCents) || amountCents <= 0) return NextResponse.json({ message:"Revise os dados da despesa." }, { status:400 });
-  const { data: ownedEvent } = await context.database.from("events").select("id").eq("id", eventId).eq("owner_id", context.user.id).maybeSingle();
+  if (!/^[0-9a-f-]{36}$/i.test(eventId) || description.length < 2 || description.length > 120 || notes.length > 500 || !["general","beer"].includes(category) || !Number.isSafeInteger(amountCents) || amountCents <= 0) return NextResponse.json({ message:"Revise os dados da despesa." }, { status:400 });
+  const { data: ownedEvent } = await context.database.from("events").select("id,status").eq("id", eventId).eq("owner_id", context.user.id).maybeSingle();
   if (!ownedEvent) return NextResponse.json({ message:"Evento não encontrado." }, { status:404 });
+  if (ownedEvent.status === "closed") return NextResponse.json({ message:"Este evento está encerrado e não pode ser alterado." }, { status:409 });
 
   let receiptPath: string|null = null;
   if (receipt instanceof File && receipt.size > 0) {
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
     const { error: uploadError } = await context.database.storage.from("receipts").upload(receiptPath, bytes, { contentType:receipt.type, upsert:false });
     if (uploadError) return NextResponse.json({ message:"Não foi possível armazenar o comprovante." }, { status:500 });
   }
-  const { error } = await context.database.from("expenses").insert({ event_id:eventId, description, category, amount_cents:amountCents, receipt_path:receiptPath });
+  const { error } = await context.database.from("expenses").insert({ event_id:eventId, description, category, amount_cents:amountCents, receipt_path:receiptPath, notes:notes || null });
   if (error) {
     if (receiptPath) await context.database.storage.from("receipts").remove([receiptPath]);
     console.error("expense_create_failed", error.code);

@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Toast } from "@/components/Toast";
 
 type ShoppingItem = readonly [string, string];
 
 // As marcações são salvas no evento para acompanharem o usuário em qualquer aparelho.
-export function ShoppingChecklist({ eventId, items, initialPurchased }: { eventId: string; items: readonly ShoppingItem[]; initialPurchased: string[] }) {
+export function ShoppingChecklist({ eventId, items, initialPurchased, readOnly=false }: { eventId: string; items: readonly ShoppingItem[]; initialPurchased: string[]; readOnly?: boolean }) {
   const [purchased, setPurchased] = useState<string[]>(initialPurchased);
   const [beverage, setBeverage] = useState<"chopp"|"latas"|"garrafas">("chopp");
   const [saveMessage, setSaveMessage] = useState("");
@@ -31,11 +32,13 @@ export function ShoppingChecklist({ eventId, items, initialPurchased }: { eventI
   }
 
   function toggle(name: string) {
+    if (readOnly) return;
     const next = purchasedSet.has(name) ? purchased.filter((item) => item !== name) : [...purchased, name];
     void persist(next);
   }
 
   function clear() {
+    if (readOnly) return;
     void persist([]);
   }
 
@@ -45,22 +48,23 @@ export function ShoppingChecklist({ eventId, items, initialPurchased }: { eventI
         <div className="beverage-picker"><label>Bebida alcoólica<select value={beverage} onChange={(event)=>setBeverage(event.target.value as typeof beverage)}><option value="chopp">Chopp</option><option value="latas">Latas</option><option value="garrafas">Garrafas 600 ml</option></select></label></div>
         <div className="export-block"><span>Gerar lista em</span><div className="export-actions"><Link className="secondary link-button" href={`/api/exportar/pdf?bebida=${beverage}&evento=${eventId}`}>PDF</Link><Link className="primary link-button" href={`/api/exportar/xlsx?bebida=${beverage}&evento=${eventId}`}>Excel</Link></div></div>
       </div>
-      {saveMessage && <p className="form-message is-error">{saveMessage}</p>}
       <div className="shopping-progress"><p><b>{visibleItems.filter(([name])=>purchasedSet.has(name)).length}</b> de {visibleItems.length} itens comprados</p>
-        {purchased.length > 0 && <button className="text-button" type="button" onClick={clear}>Limpar marcações</button>}
+        {purchased.length > 0 && !readOnly && <button className="text-button" type="button" onClick={clear}>Limpar marcações</button>}
       </div>
       <div className="shopping-grid">
         {visibleItems.map(([name, quantity]) => {
           const checked = purchasedSet.has(name);
           return (
             <label className={`shopping-item${checked ? " is-purchased" : ""}`} key={name}>
-              <input type="checkbox" checked={checked} onChange={() => toggle(name)} />
+              <input type="checkbox" checked={checked} disabled={readOnly} onChange={() => toggle(name)} />
               <span className="shopping-check" aria-hidden="true">✓</span>
               <span className="shopping-copy"><b>{name}</b><small>{quantity}</small></span>
             </label>
           );
         })}
       </div>
+      {readOnly && <p className="readonly-notice">Evento encerrado: lista disponível somente para consulta.</p>}
+      <Toast message={saveMessage} error onClose={()=>setSaveMessage("")} />
     </section>
   );
 }

@@ -11,7 +11,7 @@ export default async function EventsPage() {
   if (!context) redirect("/login");
   let { data, error } = await context.database
     .from("events")
-    .select("id,title,event_date,address,grams_per_person,beer_liters_per_drinker,invite_token,pix_key,pix_holder")
+    .select("id,title,event_date,address,grams_per_person,beer_liters_per_drinker,invite_token,pix_key,pix_holder,status")
     .eq("owner_id", context.user.id)
     .order("event_date", { ascending: false });
   if (error?.code === "PGRST204") {
@@ -25,6 +25,7 @@ export default async function EventsPage() {
       pix_key: null,
       pix_holder: null,
       beer_liters_per_drinker: 1.5,
+      status: "active" as const,
     }));
     error = fallback.error;
   }

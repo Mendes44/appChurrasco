@@ -21,9 +21,11 @@ export async function POST(request: Request) {
     const requestKey = createHash("sha256").update(`${ip}|${body.token}|${hour}`).digest("hex");
     const { data: allowed } = await supabase.rpc("allow_confirmation", { p_key: requestKey });
     if (!allowed) return NextResponse.json({ message: "Muitas tentativas. Aguarde um pouco e tente novamente." }, { status: 429 });
-    const { data: invitation } = await supabase.from("invitations").select("revoked_at, responded_at").eq("token", body.token).maybeSingle();
+    const { data: invitation } = await supabase.from("invitations").select("revoked_at, responded_at, event_id").eq("token", body.token).maybeSingle();
     if (!invitation || invitation.revoked_at) return NextResponse.json({ message: "Este convite foi cancelado." }, { status: 404 });
     if (invitation.responded_at) return NextResponse.json({ message: "Este convite já foi respondido." }, { status: 409 });
+    const { data: event } = await supabase.from("events").select("status").eq("id", invitation.event_id).maybeSingle();
+    if (!event || event.status === "closed") return NextResponse.json({ message:"Este evento já foi encerrado." }, { status:410 });
     const { error } = await supabase.rpc("submit_personal_invitation", {
       p_token: body.token,
       p_attending: body.attending,

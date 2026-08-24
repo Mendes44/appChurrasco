@@ -18,8 +18,9 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
-  const { data: event } = await admin.from("events").select("id").eq("id", body.eventId).eq("owner_id", user.id).maybeSingle();
+  const { data: event } = await admin.from("events").select("id,status").eq("id", body.eventId).eq("owner_id", user.id).maybeSingle();
   if (!event) return NextResponse.json({ message: "Evento não encontrado." }, { status: 404 });
+  if (event.status === "closed") return NextResponse.json({ message: "Este evento está encerrado." }, { status: 409 });
 
   const { data, error } = await admin.from("invitations").insert({ event_id: event.id, guest_name: guestName }).select("token, guest_name").single();
   // Em vez de criar duplicata, devolva o link já existente para o organizador.
@@ -37,6 +38,11 @@ export async function PATCH(request: Request) {
   if (!context) return NextResponse.json({ message: "Acesso não autorizado." }, { status: 403 });
   const body = await request.json() as { id?: string; action?: string };
   const invitationId = String(body.id ?? "");
+  const { data: invitation } = await context.database.from("invitations").select("id,event_id").eq("id", invitationId).maybeSingle();
+  if (!invitation) return NextResponse.json({ message:"Convite não encontrado." }, { status:404 });
+  const { data: event } = await context.database.from("events").select("status").eq("id", invitation.event_id).eq("owner_id", context.user.id).maybeSingle();
+  if (!event) return NextResponse.json({ message:"Acesso não autorizado." }, { status:403 });
+  if (event.status === "closed") return NextResponse.json({ message:"Este evento está encerrado." }, { status:409 });
   if (body.action === "cancel") {
     const { error } = await context.database.from("invitations").update({ revoked_at: new Date().toISOString() }).eq("id", invitationId).is("responded_at", null);
     return error ? NextResponse.json({ message: "Não foi possível cancelar." }, { status: 500 }) : NextResponse.json({ message: "Convite cancelado." });

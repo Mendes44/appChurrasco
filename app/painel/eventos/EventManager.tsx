@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { Toast } from "@/components/Toast";
 type EventItem = {
   id: string;
   title: string;
@@ -12,12 +13,14 @@ type EventItem = {
   invite_token: string;
   pix_key: string | null;
   pix_holder: string | null;
+  status: "active" | "closed";
 };
 // Componente cliente responsável pelos formulários de criação, edição e exclusão.
 export function EventManager({ events }: { events: EventItem[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState<EventItem | null>(null);
   const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -41,6 +44,7 @@ export function EventManager({ events }: { events: EventItem[] }) {
     );
     const result = await response.json();
     setMessage(result.message);
+    setIsError(!response.ok);
     if (response.ok) {
       formElement.reset();
       setEditing(null);
@@ -51,6 +55,22 @@ export function EventManager({ events }: { events: EventItem[] }) {
     if (!confirm("Excluir este churrasco e todos os seus convidados?")) return;
     await fetch(`/api/eventos/${id}`, { method: "DELETE" });
     router.refresh();
+  }
+  async function toggleClosed(item: EventItem) {
+    const closing = item.status !== "closed";
+    if (closing && !confirm("Encerrar este evento? Ele ficará disponível apenas para consulta.")) return;
+    const response = await fetch(`/api/eventos/${item.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ closed: closing }),
+    });
+    const result = await response.json();
+    setMessage(result.message);
+    setIsError(!response.ok);
+    if (response.ok) {
+      setEditing(null);
+      router.refresh();
+    }
   }
   function localDate(value: string) {
     const date = new Date(value);
@@ -148,7 +168,6 @@ export function EventManager({ events }: { events: EventItem[] }) {
               </button>
             )}
           </div>
-          {message && <p className="manager-message">{message}</p>}
         </form>
       </section>
       <section className="card">
@@ -163,6 +182,7 @@ export function EventManager({ events }: { events: EventItem[] }) {
                   {new Date(item.event_date).toLocaleString("pt-BR")} ·{" "}
                   {item.address || "Sem endereço"}
                 </small>
+                <small className={item.status === "closed" ? "event-closed" : "event-active"}>{item.status === "closed" ? "Encerrado · somente leitura" : "Ativo"}</small>
               </div>
               <div className="row-actions">
                 <Link
@@ -171,23 +191,20 @@ export function EventManager({ events }: { events: EventItem[] }) {
                 >
                   Abrir painel
                 </Link>
-                <button
-                  className="text-button"
-                  onClick={() => setEditing(item)}
-                >
-                  Editar
-                </button>
-                <button
+                {item.status !== "closed" && <button className="text-button" onClick={() => setEditing(item)}>Editar</button>}
+                <button className="secondary" onClick={() => toggleClosed(item)}>{item.status === "closed" ? "Reabrir" : "Encerrar"}</button>
+                {item.status !== "closed" && <button
                   className="danger-button"
                   onClick={() => remove(item.id)}
                 >
                   Excluir
-                </button>
+                </button>}
               </div>
             </article>
           ))}
         </div>
       </section>
+      <Toast message={message} error={isError} onClose={() => setMessage("")} />
     </div>
   );
 }

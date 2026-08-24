@@ -10,6 +10,9 @@ export async function PATCH(
   if (!context)
     return NextResponse.json({ message: "Não autorizado." }, { status: 403 });
   const { id } = await params;
+  const { data: currentEvent } = await context.database.from("events").select("status").eq("id", id).eq("owner_id", context.user.id).maybeSingle();
+  if (!currentEvent) return NextResponse.json({ message:"Evento não encontrado." }, { status:404 });
+  if (currentEvent.status === "closed") return NextResponse.json({ message:"Reabra o evento antes de editá-lo." }, { status:409 });
   const body = await request.json();
   const values = {
     title: String(body.title ?? "").trim(),
@@ -53,6 +56,9 @@ export async function DELETE(
   if (!context)
     return NextResponse.json({ message: "Não autorizado." }, { status: 403 });
   const { id } = await params;
+  const { data: event } = await context.database.from("events").select("status").eq("id", id).eq("owner_id", context.user.id).maybeSingle();
+  if (!event) return NextResponse.json({ message:"Evento não encontrado." }, { status:404 });
+  if (event.status === "closed") return NextResponse.json({ message:"Reabra o evento antes de excluí-lo." }, { status:409 });
   const { error } = await context.database
     .from("events")
     .delete()

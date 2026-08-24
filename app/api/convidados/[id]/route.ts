@@ -13,8 +13,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { data: guest } = await context.database.from("guests").select("id,event_id").eq("id", id).maybeSingle();
   if (!guest) return NextResponse.json({ message:"Convidado não encontrado." }, { status:404 });
   // A conferência do evento evita que apenas conhecer um UUID permita alterações.
-  const { data: ownedEvent } = await context.database.from("events").select("id").eq("id", guest.event_id).eq("owner_id", context.user.id).maybeSingle();
+  const { data: ownedEvent } = await context.database.from("events").select("id,status").eq("id", guest.event_id).eq("owner_id", context.user.id).maybeSingle();
   if (!ownedEvent) return NextResponse.json({ message:"Não autorizado." }, { status:403 });
+  if (ownedEvent.status === "closed") return NextResponse.json({ message:"Este evento está encerrado." }, { status:409 });
   const { error } = await context.database.from("guests").update({ name, phone: phone || null, companion_name: companion, is_attending: party > 0, party_size: party, drinkers_count: drinkers, drinks: drinkers > 0, attended, brings_own_drink: Boolean(body.bringsOwnDrink) }).eq("id", id);
   if (error) { console.error("guest_update_failed", error.code); return NextResponse.json({ message:`Não foi possível editar (${error.code}).` }, { status:500 }); }
   return NextResponse.json({ message:"Resposta atualizada." });
@@ -25,8 +26,9 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const { id } = await params;
   const { data: guest } = await context.database.from("guests").select("id,event_id").eq("id", id).maybeSingle();
   if (!guest) return NextResponse.json({ message:"Convidado não encontrado." }, { status:404 });
-  const { data: ownedEvent } = await context.database.from("events").select("id").eq("id", guest.event_id).eq("owner_id", context.user.id).maybeSingle();
+  const { data: ownedEvent } = await context.database.from("events").select("id,status").eq("id", guest.event_id).eq("owner_id", context.user.id).maybeSingle();
   if (!ownedEvent) return NextResponse.json({ message:"Não autorizado." }, { status:403 });
+  if (ownedEvent.status === "closed") return NextResponse.json({ message:"Este evento está encerrado." }, { status:409 });
   const { error } = await context.database.from("guests").delete().eq("id", id);
   return error ? NextResponse.json({ message:`Não foi possível excluir (${error.code}).` }, { status:500 }) : NextResponse.json({ message:"Convidado excluído." });
 }

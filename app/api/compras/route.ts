@@ -21,6 +21,10 @@ export async function PATCH(request: Request) {
   if (!/^[0-9a-f-]{36}$/i.test(eventId) || !items)
     return NextResponse.json({ message: "Dados inválidos." }, { status: 400 });
 
+  const { data: event } = await context.database.from("events").select("status").eq("id", eventId).eq("owner_id", context.user.id).maybeSingle();
+  if (!event) return NextResponse.json({ message: "Evento não encontrado." }, { status: 404 });
+  if (event.status === "closed") return NextResponse.json({ message: "Este evento está encerrado." }, { status: 409 });
+
   const { error } = await context.database
     .from("events")
     .update({ shopping_checked: [...new Set(items)] })

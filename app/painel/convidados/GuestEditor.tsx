@@ -2,14 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Toast } from "@/components/Toast";
 
 type Guest = { id:string; name:string; phone:string|null; companion_name:string|null; party_size:number; drinkers_count:number; brings_own_drink:boolean; attended:boolean|null };
 
-export function GuestEditor({ guests }: { guests: Guest[] }) {
+export function GuestEditor({ guests, readOnly=false }: { guests: Guest[]; readOnly?: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Guest|null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [isError, setIsError] = useState(false);
   const editFormRef = useRef<HTMLFormElement>(null);
 
   // Assim que o formulário aparece, posiciona a tela nele inclusive no celular.
@@ -20,25 +22,25 @@ export function GuestEditor({ guests }: { guests: Guest[] }) {
     setSending(true); setMessage("");
     const form = new FormData(event.currentTarget);
     const response = await fetch(`/api/convidados/${editing.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ name:form.get("name"), phone:form.get("phone"), companionName:form.get("companionName"), partySize:Number(form.get("partySize")), drinkersCount:Number(form.get("drinkersCount")), attended:form.get("attended"), bringsOwnDrink:form.get("bringsOwnDrink")==="on" }) });
-    const result = await response.json(); setMessage(result.message); setSending(false);
+    const result = await response.json(); setMessage(result.message); setIsError(!response.ok); setSending(false);
     if (response.ok) { setEditing(null); router.refresh(); }
   }
 
   async function remove(guest: Guest) {
     if (!confirm(`Excluir a resposta de ${guest.name}?`)) return;
     const response = await fetch(`/api/convidados/${guest.id}`, { method:"DELETE" });
-    const result = await response.json(); setMessage(result.message);
+    const result = await response.json(); setMessage(result.message); setIsError(!response.ok);
     if (response.ok) { setEditing(null); router.refresh(); }
   }
 
   return <section className="card guest-admin">
-    {message && <p className="manager-message" role="status">{message}</p>}
+    {readOnly&&<p className="readonly-notice">Evento encerrado: respostas disponíveis somente para consulta.</p>}
     <div className="guest-management-list">{guests.map((guest) => <article key={guest.id}>
       <div><b>{guest.name}{guest.companion_name?` + ${guest.companion_name}`:""}</b><small>{guest.party_size===0?"Não vai":`${guest.party_size} pessoa(s) · ${guest.drinkers_count} bebem`}{guest.phone?` · ${guest.phone}`:" · telefone não informado"}</small></div>
-      <div className="row-actions"><button className="primary" type="button" onClick={()=>{setEditing(guest);setMessage("")}}>Gerenciar</button><button className="danger-button" type="button" onClick={()=>remove(guest)}>Excluir</button></div>
+      {!readOnly&&<div className="row-actions"><button className="primary" type="button" onClick={()=>{setEditing(guest);setMessage("")}}>Gerenciar</button><button className="danger-button" type="button" onClick={()=>remove(guest)}>Excluir</button></div>}
     </article>)}</div>
     {!guests.length && <p className="empty-row">Nenhuma resposta recebida.</p>}
-    {editing && <form className="admin-form edit-response" id="editar-convidado" ref={editFormRef} key={editing.id} onSubmit={save}>
+    {!readOnly&&editing && <form className="admin-form edit-response" id="editar-convidado" ref={editFormRef} key={editing.id} onSubmit={save}>
       <span className="eyebrow">GERENCIAR CONVIDADO</span><h2>Editar tudo</h2>
       <label>Nome do titular<input name="name" required minLength={2} maxLength={80} defaultValue={editing.name}/></label>
       <label>Telefone com DDD<input type="tel" name="phone" minLength={10} maxLength={20} inputMode="tel" defaultValue={editing.phone??""} placeholder="(31) 99999-9999"/></label>
@@ -48,6 +50,6 @@ export function GuestEditor({ guests }: { guests: Guest[] }) {
       <label>Presença real no evento<select name="attended" defaultValue={editing.attended===null?"pending":editing.attended?"yes":"no"}><option value="pending">Ainda não conferida</option><option value="yes">Compareceu</option><option value="no">Não compareceu</option></select></label>
       <label className="check-label"><input type="checkbox" name="bringsOwnDrink" defaultChecked={editing.brings_own_drink}/> Levará bebida própria</label>
       <div className="form-actions"><button className="primary" disabled={sending}>{sending?"Salvando...":"Salvar alterações"}</button><button type="button" className="secondary" onClick={()=>setEditing(null)}>Cancelar</button></div>
-    </form>}
+    </form>}<Toast message={message} error={isError} onClose={()=>setMessage("")} />
   </section>;
 }

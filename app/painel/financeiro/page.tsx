@@ -15,7 +15,7 @@ export default async function FinancePage({
   const { evento } = await searchParams;
   let query = context.database
     .from("events")
-    .select("id,title,pix_key,pix_holder")
+    .select("id,title,pix_key,pix_holder,status")
     .eq("owner_id", context.user.id);
   if (evento && /^[0-9a-f-]{36}$/i.test(evento)) query = query.eq("id", evento);
   const { data: event } = await query
@@ -32,7 +32,7 @@ export default async function FinancePage({
   const { data: expenseData } = event
     ? await context.database
         .from("expenses")
-        .select("id,description,category,amount_cents,receipt_path")
+        .select("id,description,category,amount_cents,receipt_path,notes")
         .eq("event_id", event.id)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -64,6 +64,7 @@ export default async function FinancePage({
           pixHolder={event.pix_holder}
           expenses={expenses as Expense[]}
           guests={(guestData ?? []) as FinanceGuest[]}
+          readOnly={event.status === "closed"}
         />
       ) : (
         <section className="empty-card">Crie um evento para começar.</section>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { compressReceipt } from "@/lib/compress-receipt";
+import { Toast } from "@/components/Toast";
 
 
 export type Expense = {
@@ -11,6 +12,7 @@ export type Expense = {
   category: "general" | "beer";
   amount_cents: number;
   receipt_url: string | null;
+  notes: string | null;
 };
 export type FinanceGuest = {
   id: string;
@@ -35,6 +37,7 @@ export function FinanceManager({
   pixHolder,
   expenses,
   guests,
+  readOnly,
 }: {
   eventId: string;
   eventTitle: string;
@@ -42,11 +45,14 @@ export function FinanceManager({
   pixHolder: string | null;
   expenses: Expense[];
   guests: FinanceGuest[];
+  readOnly: boolean;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sendingReceiptId, setSendingReceiptId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "paid" | "pending">("all");
+  const [isError, setIsError] = useState(false);
 
   // Até a conferência real ser feita, a confirmação do convite funciona como previsão.
   const attending = guests.filter(
@@ -66,19 +72,29 @@ export function FinanceManager({
   const generalPerPerson = people ? generalTotal / people : 0;
   const beerPerDrinker = drinkers ? beerTotal / drinkers : 0;
   const charges = useMemo(
-    () =>
-      attending.map((guest) => ({
+    () => {
+      const calculated = attending.map((guest) => ({
         ...guest,
         cents: Math.round(
           generalPerPerson * guest.party_size +
             beerPerDrinker * guest.drinkers_count,
         ),
-      })),
-    [attending, generalPerPerson, beerPerDrinker],
+      }));
+      // Ajusta no último rateio eventual diferença de centavos causada pelo arredondamento.
+      if (calculated.length) {
+        const roundedTotal = calculated.reduce((sum, guest) => sum + guest.cents, 0);
+        calculated[calculated.length - 1].cents += generalTotal + beerTotal - roundedTotal;
+      }
+      return calculated;
+    },
+    [attending, generalPerPerson, beerPerDrinker, generalTotal, beerTotal],
   );
   const paidCharges = charges.filter((guest) => guest.paid_at);
   const paidTotal = paidCharges.reduce((sum, guest) => sum + guest.cents, 0);
   const pendingTotal = charges.reduce((sum, guest) => sum + guest.cents, 0) - paidTotal;
+  const filteredCharges = charges.filter((guest) =>
+    filter === "all" ? true : filter === "paid" ? Boolean(guest.paid_at) : !guest.paid_at,
+  );
 
   async function add(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,6 +118,7 @@ export function FinanceManager({
     });
     const result = await response.json();
     setMessage(result.message);
+    setIsError(!response.ok);
     setSending(false);
     if (response.ok) {
       formElement.reset();
@@ -113,6 +130,7 @@ export function FinanceManager({
     const response = await fetch(`/api/despesas/${id}`, { method: "DELETE" });
     const result = await response.json();
     setMessage(result.message);
+    setIsError(!response.ok);
     if (response.ok) router.refresh();
   }
 
@@ -128,9 +146,11 @@ export function FinanceManager({
       });
       const result = await response.json();
       setMessage(result.message);
+      setIsError(!response.ok);
       if (response.ok) router.refresh();
     } catch {
       setMessage("Não foi possível preparar ou enviar a imagem.");
+      setIsError(true);
     } finally {
       setSendingReceiptId(null);
     }
@@ -138,7 +158,7 @@ export function FinanceManager({
 
   async function setPaid(guest: FinanceGuest, paid: boolean) {
     const response = await fetch(`/api/pagamentos/${guest.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ paid }) });
-    const result = await response.json(); setMessage(result.message);
+    const result = await response.json(); setMessage(result.message); setIsError(!response.ok);
     if (response.ok) router.refresh();
   }
 
@@ -174,6 +194,15 @@ Resumo do seu rateio:
 
 Obrigado!`;
 
+    return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+  }
+
+  function reminder(guest: FinanceGuest & { cents: number }) {
+    if (!guest.phone || guest.paid_at) return null;
+    let digits = guest.phone.replace(/\D/g, "");
+    if (digits.length <= 11) digits = `55${digits}`;
+    const pixDetails = pixKey ? `\n\nPix: ${pixKey}${pixHolder ? `\nTitular: ${pixHolder}` : ""}` : "";
+    const text = `Olá, ${guest.name}! Passando para lembrar que o pagamento de *${money(guest.cents)}* referente ao ${eventTitle} continua pendente.${pixDetails}`;
     return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
   }
 
@@ -245,13 +274,17 @@ Obrigado!`;
                 accept="image/jpeg,image/png,image/webp"
               />
             </label>
+            <label>
+              Observações (opcional)
+              <textarea name="notes" maxLength={500} placeholder="Ex.: Compra dividida em dois cartões" />
+            </label>
             <small className="field-help">
               A imagem é compactada e armazenada de forma privada.
             </small>
-            <button className="primary" disabled={sending}>
+            <button className="primary" disabled={sending || readOnly}>
               {sending ? "Salvando..." : "Adicionar despesa"}
             </button>
-            {message && <p className="manager-message">{message}</p>}
+            {readOnly && <p className="readonly-notice">Evento encerrado: dados disponíveis somente para consulta.</p>}
           </form>
         </article>
         <article className="card">
@@ -270,6 +303,7 @@ Obrigado!`;
                     {item.category === "beer" ? "Cerveja" : "Geral"} ·{" "}
                     {money(item.amount_cents)}
                   </small>
+                  {item.notes && <small className="expense-notes">{item.notes}</small>}
                 </span>
                 <div className="row-actions">
                   {item.receipt_url ? (
@@ -281,7 +315,7 @@ Obrigado!`;
                     >
                       Ver nota
                     </a>
-                  ) : (
+                  ) : !readOnly ? (
                     <label className="secondary receipt-upload-button">
                       {sendingReceiptId === item.id ? "Enviando..." : "Adicionar nota"}
                       <input
@@ -296,13 +330,13 @@ Obrigado!`;
                         }}
                       />
                     </label>
-                  )}
-                  <button
+                  ) : null}
+                  {!readOnly && <button
                     className="danger-button"
                     onClick={() => remove(item.id)}
                   >
                     Excluir
-                  </button>
+                  </button>}
                 </div>
               </div>
             ))}
@@ -325,14 +359,24 @@ Obrigado!`;
             Imprimir ou salvar PDF
           </button>
         </div>
+        <div className="finance-tools">
+          <div className="finance-filters" aria-label="Filtrar pagamentos">
+            <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>Todos ({charges.length})</button>
+            <button className={filter === "paid" ? "active" : ""} onClick={() => setFilter("paid")}>Pagos ({paidCharges.length})</button>
+            <button className={filter === "pending" ? "active" : ""} onClick={() => setFilter("pending")}>Pendentes ({charges.length - paidCharges.length})</button>
+          </div>
+          <button className="secondary" type="button" onClick={()=>setFilter("pending")}>Exibir lembretes pendentes</button>
+          <div className="finance-export"><span>Exportar relatório</span><a className="secondary link-button" href={`/api/exportar-financeiro/pdf?evento=${eventId}`}>PDF</a><a className="primary link-button" href={`/api/exportar-financeiro/xlsx?evento=${eventId}`}>Excel</a></div>
+        </div>
         <p className="rate-note">
           As despesas gerais são divididas por todos os presentes. A cerveja é
           cobrada somente de quem bebeu. Pode ocorrer diferença de centavos por
           arredondamento.
         </p>
         <div className="charge-list">
-          {charges.map((guest) => {
+          {filteredCharges.map((guest) => {
             const url = whatsapp(guest);
+            const reminderUrl = reminder(guest);
             return (
               <div key={guest.id}>
                 <span>
@@ -343,12 +387,12 @@ Obrigado!`;
                   <small className={guest.paid_at?"payment-paid":"payment-pending"}>{guest.paid_at?`Pago em ${new Date(guest.paid_at).toLocaleDateString("pt-BR")}`:"Pagamento pendente"}</small>
                 </span>
                 <strong>{money(guest.cents)}</strong>
-                <div className="charge-actions">{url ? <a className="primary link-button" href={url} target="_blank" rel="noreferrer">Enviar no WhatsApp</a> : <span className="missing-phone">Cadastre o telefone</span>}<button className={guest.paid_at?"secondary":"payment-button"} type="button" onClick={()=>setPaid(guest,!guest.paid_at)}>{guest.paid_at?"Marcar pendente":"Marcar como pago"}</button></div>
+                <div className="charge-actions">{guest.paid_at ? (url && <a className="secondary link-button" href={url} target="_blank" rel="noreferrer">Ver mensagem</a>) : reminderUrl ? <a className="primary link-button" href={reminderUrl} target="_blank" rel="noreferrer">Enviar lembrete</a> : <span className="missing-phone">Cadastre o telefone</span>}{!readOnly && <button className={guest.paid_at?"secondary":"payment-button"} type="button" onClick={()=>setPaid(guest,!guest.paid_at)}>{guest.paid_at?"Marcar pendente":"Marcar como pago"}</button>}</div>
               </div>
             );
           })}
-          {!charges.length && (
-            <p className="empty-row">Nenhum convidado confirmou presença.</p>
+          {!filteredCharges.length && (
+            <p className="empty-row">Nenhum pagamento encontrado neste filtro.</p>
           )}
         </div>
       </section>
@@ -356,6 +400,7 @@ Obrigado!`;
         <div><small>Total recebido</small><b>{money(paidTotal)}</b><span>{paidCharges.length} de {charges.length} pagamentos</span></div>
         <div><small>A receber</small><b>{money(pendingTotal)}</b><span>Atualizado ao marcar cada convidado</span></div>
       </section>
+      <Toast message={message} error={isError} onClose={() => setMessage("")} />
     </>
   );
 }
