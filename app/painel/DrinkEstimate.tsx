@@ -4,14 +4,14 @@ import { useState } from "react";
 
 type DrinkType = "chopp" | "lata" | "garrafa";
 
-export function DrinkEstimate({ drinkers, people }: { drinkers: number; people: number }) {
-  // A escolha altera somente a apresentação; todas as opções usam a mesma
-  // referência de 1,5 litro por pessoa que consome cerveja.
+export function DrinkEstimate({ drinkers, people, litersPerDrinker }: { drinkers: number; people: number; litersPerDrinker: number }) {
+  // Todas as embalagens representam o mesmo volume configurado no evento.
   const [type, setType] = useState<DrinkType>("chopp");
+  const totalLiters = drinkers * litersPerDrinker;
   const estimates = {
-    chopp: { label:"Chopp", value:`${(drinkers * 1.5).toFixed(1)} L`, detail:"1,5 L por pessoa que bebe", icon:"/beer-glass.svg" },
-    lata: { label:"Latas", value:`${drinkers * 5} unidades`, detail:"350 ml cada", icon:"/beer-can.svg" },
-    garrafa: { label:"Garrafas", value:`${Math.ceil(drinkers * 2.5)} unidades`, detail:"600 ml cada", icon:"/beer-bottle.svg" },
+    chopp: { label:"Chopp", value:`${totalLiters.toFixed(1)} L`, detail:`${litersPerDrinker.toLocaleString("pt-BR")} L por pessoa que bebe`, icon:"/beer-glass.svg" },
+    lata: { label:"Latas", value:`${Math.ceil(totalLiters / .35)} unidades`, detail:"350 ml cada", icon:"/beer-can.svg" },
+    garrafa: { label:"Garrafas", value:`${Math.ceil(totalLiters / .6)} unidades`, detail:"600 ml cada", icon:"/beer-bottle.svg" },
   };
   const selected = estimates[type];
 

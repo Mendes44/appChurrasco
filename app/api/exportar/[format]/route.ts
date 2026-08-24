@@ -4,16 +4,18 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-async function getList() {
+async function getList(eventId?: string) {
   const context = await getAdminContext();
   if (!context) return null;
-  const { data: event } = await context.database.from("events").select("id,title,grams_per_person").eq("owner_id", context.user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  let eventQuery = context.database.from("events").select("id,title,grams_per_person,beer_liters_per_drinker").eq("owner_id", context.user.id);
+  if (eventId && /^[0-9a-f-]{36}$/i.test(eventId)) eventQuery = eventQuery.eq("id", eventId);
+  const { data: event } = await eventQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!event) return { title: "Braza", items: buildShoppingList(0, 0, 350) };
   const { data } = await context.database.from("guests").select("party_size,drinkers_count,is_attending").eq("event_id", event.id);
   const attending = (data ?? []).filter((guest) => guest.is_attending);
   const people = attending.reduce((total, guest) => total + guest.party_size, 0);
   const drinkers = attending.reduce((total, guest) => total + guest.drinkers_count, 0);
-  return { title: event.title, items: buildShoppingList(people, drinkers, event.grams_per_person) };
+  return { title: event.title, items: buildShoppingList(people, drinkers, event.grams_per_person, Number(event.beer_liters_per_drinker ?? 1.5)) };
 }
 
 function safeName(title: string) {
@@ -22,11 +24,12 @@ function safeName(title: string) {
 
 // Os arquivos são gerados no servidor e somente após validar o login do proprietário.
 export async function GET(request: Request, { params }: { params: Promise<{ format: string }> }) {
-  const list = await getList();
+  const url = new URL(request.url);
+  const list = await getList(url.searchParams.get("evento") ?? undefined);
   if (!list) return NextResponse.json({ message: "Não autorizado." }, { status: 403 });
   const { format } = await params;
   const filename = `${safeName(list.title)}-lista-de-compras`;
-  const beverage = new URL(request.url).searchParams.get("bebida") ?? "chopp";
+  const beverage = url.searchParams.get("bebida") ?? "chopp";
   const items = list.items.filter(([name]) => name === "Chopp" ? beverage === "chopp" : name.startsWith("Latas") ? beverage === "latas" : name.startsWith("Garrafas") ? beverage === "garrafas" : true);
 
   if (format === "xlsx") {

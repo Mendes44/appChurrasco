@@ -12,6 +12,7 @@ export async function POST(request: Request) {
   const pixKey = String(body.pixKey ?? "").trim();
   const pixHolder = String(body.pixHolder ?? "").trim();
   const grams = Number(body.gramsPerPerson);
+  const beerLiters = Number(body.beerLitersPerDrinker ?? 1.5);
   if (
     title.length < 3 ||
     title.length > 100 ||
@@ -19,7 +20,9 @@ export async function POST(request: Request) {
     pixHolder.length > 120 ||
     !body.eventDate ||
     grams < 200 ||
-    grams > 1000
+    grams > 1000 ||
+    beerLiters < 0.1 ||
+    beerLiters > 5
   )
     return NextResponse.json(
       { message: "Revise os dados do churrasco." },
@@ -31,6 +34,7 @@ export async function POST(request: Request) {
     title,
     event_date: body.eventDate,
     grams_per_person: grams,
+    beer_liters_per_drinker: beerLiters,
   };
   
   let { error } = await context.database

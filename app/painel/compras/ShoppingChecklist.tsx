@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 
 type ShoppingItem = readonly [string, string];
 
-// As marcações ficam no aparelho para continuarem disponíveis mesmo sem alterar o banco.
-export function ShoppingChecklist({ eventId, items }: { eventId: string; items: readonly ShoppingItem[] }) {
-  const storageKey = `braza:compras:${eventId}`;
-  const [purchased, setPurchased] = useState<string[]>([]);
+// As marcações são salvas no evento para acompanharem o usuário em qualquer aparelho.
+export function ShoppingChecklist({ eventId, items, initialPurchased }: { eventId: string; items: readonly ShoppingItem[]; initialPurchased: string[] }) {
+  const [purchased, setPurchased] = useState<string[]>(initialPurchased);
   const [beverage, setBeverage] = useState<"chopp"|"latas"|"garrafas">("chopp");
-
-  useEffect(() => {
-    // A leitura ocorre apenas no navegador porque localStorage não existe no servidor.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    try { setPurchased(JSON.parse(localStorage.getItem(storageKey) ?? "[]")); } catch { setPurchased([]); }
-  }, [storageKey]);
+  const [saveMessage, setSaveMessage] = useState("");
 
   const purchasedSet = useMemo(() => new Set(purchased), [purchased]);
   const visibleItems = useMemo(() => items.filter(([name]) => {
@@ -25,23 +19,33 @@ export function ShoppingChecklist({ eventId, items }: { eventId: string; items: 
     return true;
   }), [items, beverage]);
 
+  async function persist(next: string[]) {
+    const previous = purchased;
+    setPurchased(next);
+    if (eventId === "sem-evento") return;
+    const response = await fetch("/api/compras", { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ eventId, items:next }) });
+    if (!response.ok) {
+      setPurchased(previous);
+      setSaveMessage("Não foi possível salvar a marcação.");
+    } else setSaveMessage("");
+  }
+
   function toggle(name: string) {
     const next = purchasedSet.has(name) ? purchased.filter((item) => item !== name) : [...purchased, name];
-    setPurchased(next);
-    localStorage.setItem(storageKey, JSON.stringify(next));
+    void persist(next);
   }
 
   function clear() {
-    setPurchased([]);
-    localStorage.removeItem(storageKey);
+    void persist([]);
   }
 
   return (
     <section className="shopping-checklist" aria-label="Lista de compras">
       <div className="shopping-toolbar">
         <div className="beverage-picker"><label>Bebida alcoólica<select value={beverage} onChange={(event)=>setBeverage(event.target.value as typeof beverage)}><option value="chopp">Chopp</option><option value="latas">Latas</option><option value="garrafas">Garrafas 600 ml</option></select></label></div>
-        <div className="export-actions"><Link className="secondary link-button" href={`/api/exportar/pdf?bebida=${beverage}`}>PDF</Link><Link className="primary link-button" href={`/api/exportar/xlsx?bebida=${beverage}`}>Excel</Link></div>
+        <div className="export-block"><span>Gerar lista em</span><div className="export-actions"><Link className="secondary link-button" href={`/api/exportar/pdf?bebida=${beverage}&evento=${eventId}`}>PDF</Link><Link className="primary link-button" href={`/api/exportar/xlsx?bebida=${beverage}&evento=${eventId}`}>Excel</Link></div></div>
       </div>
+      {saveMessage && <p className="form-message is-error">{saveMessage}</p>}
       <div className="shopping-progress"><p><b>{visibleItems.filter(([name])=>purchasedSet.has(name)).length}</b> de {visibleItems.length} itens comprados</p>
         {purchased.length > 0 && <button className="text-button" type="button" onClick={clear}>Limpar marcações</button>}
       </div>

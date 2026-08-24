@@ -46,6 +46,7 @@ export function FinanceManager({
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendingReceiptId, setSendingReceiptId] = useState<string | null>(null);
 
   // Até a conferência real ser feita, a confirmação do convite funciona como previsão.
   const attending = guests.filter(
@@ -75,6 +76,9 @@ export function FinanceManager({
       })),
     [attending, generalPerPerson, beerPerDrinker],
   );
+  const paidCharges = charges.filter((guest) => guest.paid_at);
+  const paidTotal = paidCharges.reduce((sum, guest) => sum + guest.cents, 0);
+  const pendingTotal = charges.reduce((sum, guest) => sum + guest.cents, 0) - paidTotal;
 
   async function add(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,6 +114,26 @@ export function FinanceManager({
     const result = await response.json();
     setMessage(result.message);
     if (response.ok) router.refresh();
+  }
+
+  async function attachReceipt(expenseId: string, originalFile: File) {
+    setSendingReceiptId(expenseId);
+    setMessage("");
+    try {
+      const form = new FormData();
+      form.set("receipt", await compressReceipt(originalFile));
+      const response = await fetch(`/api/despesas/${expenseId}/comprovante`, {
+        method: "POST",
+        body: form,
+      });
+      const result = await response.json();
+      setMessage(result.message);
+      if (response.ok) router.refresh();
+    } catch {
+      setMessage("Não foi possível preparar ou enviar a imagem.");
+    } finally {
+      setSendingReceiptId(null);
+    }
   }
 
   async function setPaid(guest: FinanceGuest, paid: boolean) {
@@ -217,6 +241,7 @@ Obrigado!`;
               <input
                 type="file"
                 name="receipt"
+                capture="environment"
                 accept="image/jpeg,image/png,image/webp"
               />
             </label>
@@ -247,7 +272,7 @@ Obrigado!`;
                   </small>
                 </span>
                 <div className="row-actions">
-                  {item.receipt_url && (
+                  {item.receipt_url ? (
                     <a
                       className="secondary link-button"
                       href={item.receipt_url}
@@ -256,6 +281,21 @@ Obrigado!`;
                     >
                       Ver nota
                     </a>
+                  ) : (
+                    <label className="secondary receipt-upload-button">
+                      {sendingReceiptId === item.id ? "Enviando..." : "Adicionar nota"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        capture="environment"
+                        disabled={sendingReceiptId === item.id}
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) void attachReceipt(item.id, file);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
                   )}
                   <button
                     className="danger-button"
@@ -311,6 +351,10 @@ Obrigado!`;
             <p className="empty-row">Nenhum convidado confirmou presença.</p>
           )}
         </div>
+      </section>
+      <section className="payment-total" aria-label="Resumo dos pagamentos">
+        <div><small>Total recebido</small><b>{money(paidTotal)}</b><span>{paidCharges.length} de {charges.length} pagamentos</span></div>
+        <div><small>A receber</small><b>{money(pendingTotal)}</b><span>Atualizado ao marcar cada convidado</span></div>
       </section>
     </>
   );

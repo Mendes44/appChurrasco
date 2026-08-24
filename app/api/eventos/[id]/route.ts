@@ -16,6 +16,7 @@ export async function PATCH(
     address: String(body.address ?? "").trim() || null,
     event_date: body.eventDate,
     grams_per_person: Number(body.gramsPerPerson),
+    beer_liters_per_drinker: Number(body.beerLitersPerDrinker ?? 1.5),
     pix_key: String(body.pixKey ?? "").trim() || null,
     pix_holder: String(body.pixHolder ?? "").trim() || null,
   };
@@ -25,7 +26,9 @@ export async function PATCH(
     (values.pix_holder?.length ?? 0) > 120 ||
     !values.event_date ||
     values.grams_per_person < 200 ||
-    values.grams_per_person > 1000
+    values.grams_per_person > 1000 ||
+    values.beer_liters_per_drinker < 0.1 ||
+    values.beer_liters_per_drinker > 5
   )
     return NextResponse.json({ message: "Dados inválidos." }, { status: 400 });
   const { error } = await context.database

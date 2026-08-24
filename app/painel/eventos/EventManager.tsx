@@ -8,6 +8,7 @@ type EventItem = {
   event_date: string;
   address: string | null;
   grams_per_person: number;
+  beer_liters_per_drinker: number;
   invite_token: string;
   pix_key: string | null;
   pix_holder: string | null;
@@ -26,6 +27,7 @@ export function EventManager({ events }: { events: EventItem[] }) {
       address: form.get("address"),
       eventDate: new Date(String(form.get("eventDate"))).toISOString(),
       gramsPerPerson: Number(form.get("grams")),
+      beerLitersPerDrinker: Number(form.get("beerLiters")),
       pixKey: form.get("pixKey"),
       pixHolder: form.get("pixHolder"),
     };
@@ -119,6 +121,18 @@ export function EventManager({ events }: { events: EventItem[] }) {
               max="1000"
               defaultValue={editing?.grams_per_person ?? 350}
             />
+          </label>
+          <label>
+            Litros de cerveja por pessoa que bebe
+            <input
+              type="number"
+              name="beerLiters"
+              min="0.1"
+              max="5"
+              step="0.1"
+              defaultValue={editing?.beer_liters_per_drinker ?? 1.5}
+            />
+            <small className="field-help">Padrão sugerido: 1,5 L.</small>
           </label>
           <div className="form-actions">
             <button className="primary">
