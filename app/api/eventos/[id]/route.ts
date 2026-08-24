@@ -22,6 +22,7 @@ export async function PATCH(
     beer_liters_per_drinker: Number(body.beerLitersPerDrinker ?? 1.5),
     pix_key: String(body.pixKey ?? "").trim() || null,
     pix_holder: String(body.pixHolder ?? "").trim() || null,
+    rsvp_deadline: body.rsvpDeadline || null,
   };
   if (
     values.title.length < 3 ||

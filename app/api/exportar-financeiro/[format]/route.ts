@@ -1,5 +1,6 @@
 import { getAdminContext } from "@/lib/admin";
 import { NextResponse } from "next/server";
+import { calculateCharges } from "@/lib/finance";
 
 export const runtime = "nodejs";
 
@@ -24,23 +25,15 @@ export async function GET(
 
   const [{ data: guestData }, { data: expenseData }] = await Promise.all([
     context.database.from("guests").select("name,party_size,drinkers_count,is_attending,attended,paid_at").eq("event_id", event.id).order("created_at"),
-    context.database.from("expenses").select("description,category,amount_cents,notes").eq("event_id", event.id).order("created_at"),
+    context.database.from("expenses").select("description,category,amount_cents,notes,payer_name,payment_method,purchased_at,included_in_split").eq("event_id", event.id).order("created_at"),
   ]);
   const guests = (guestData ?? []).filter((guest) => guest.attended ?? guest.is_attending);
   const expenses = expenseData ?? [];
-  const people = guests.reduce((sum, guest) => sum + guest.party_size, 0);
-  const drinkers = guests.reduce((sum, guest) => sum + guest.drinkers_count, 0);
-  const generalTotal = expenses.filter((item) => item.category === "general").reduce((sum, item) => sum + item.amount_cents, 0);
-  const beerTotal = expenses.filter((item) => item.category === "beer").reduce((sum, item) => sum + item.amount_cents, 0);
-  const charges = guests.map((guest) => ({
-    ...guest,
-    cents: Math.round((people ? generalTotal / people : 0) * guest.party_size + (drinkers ? beerTotal / drinkers : 0) * guest.drinkers_count),
-  }));
+  const generalTotal = expenses.filter((item) => item.included_in_split && item.category === "general").reduce((sum, item) => sum + item.amount_cents, 0);
+  const beerTotal = expenses.filter((item) => item.included_in_split && item.category === "beer").reduce((sum, item) => sum + item.amount_cents, 0);
+  const {charges}=calculateCharges(guests,generalTotal,beerTotal);
   const total = generalTotal + beerTotal;
-  if (charges.length) {
-    const roundedTotal = charges.reduce((sum, guest) => sum + guest.cents, 0);
-    charges[charges.length - 1].cents += total - roundedTotal;
-  }
+  const totalSpent = expenses.reduce((sum,item)=>sum+item.amount_cents,0);
   const received = charges.filter((guest) => guest.paid_at).reduce((sum, guest) => sum + guest.cents, 0);
   const { format } = await params;
   const filename = `${safeName(event.title)}-relatorio-financeiro`;
@@ -49,16 +42,16 @@ export async function GET(
     const ExcelJS = (await import("exceljs")).default;
     const workbook = new ExcelJS.Workbook();
     const summary = workbook.addWorksheet("Resumo");
-    summary.addRows([["BRAZA — Relatório financeiro"], ["Evento", event.title], ["Total gasto", total / 100], ["Recebido", received / 100], ["Pendente", (charges.reduce((sum, guest) => sum + guest.cents, 0) - received) / 100]]);
+    summary.addRows([["BRAZA — Relatório financeiro"], ["Evento", event.title], ["Total gasto", totalSpent / 100], ["Total no rateio", total / 100], ["Recebido", received / 100], ["Pendente", (charges.reduce((sum, guest) => sum + guest.cents, 0) - received) / 100]]);
     summary.getColumn(1).width = 24; summary.getColumn(2).width = 28;
-    for (const row of [3, 4, 5]) summary.getCell(`B${row}`).numFmt = 'R$ #,##0.00';
+    for (const row of [3, 4, 5, 6]) summary.getCell(`B${row}`).numFmt = 'R$ #,##0.00';
     const payments = workbook.addWorksheet("Pagamentos");
     payments.columns = [{ header:"Convidado", key:"name", width:30 }, { header:"Pessoas", key:"people", width:12 }, { header:"Bebem", key:"drinkers", width:12 }, { header:"Valor", key:"amount", width:16 }, { header:"Status", key:"status", width:16 }];
     payments.addRows(charges.map((guest) => ({ name:guest.name, people:guest.party_size, drinkers:guest.drinkers_count, amount:guest.cents / 100, status:guest.paid_at ? "Pago" : "Pendente" })));
     payments.getColumn("amount").numFmt = 'R$ #,##0.00';
     const costs = workbook.addWorksheet("Despesas");
-    costs.columns = [{ header:"Descrição", key:"description", width:32 }, { header:"Tipo", key:"category", width:18 }, { header:"Valor", key:"amount", width:16 }, { header:"Observações", key:"notes", width:45 }];
-    costs.addRows(expenses.map((item) => ({ description:item.description, category:item.category === "beer" ? "Cerveja" : "Churrasco", amount:item.amount_cents / 100, notes:item.notes ?? "" })));
+    costs.columns = [{ header:"Descrição", key:"description", width:32 }, { header:"Tipo", key:"category", width:18 }, { header:"Valor", key:"amount", width:16 }, { header:"Rateio", key:"split", width:16 }, { header:"Pago por", key:"payer", width:22 }, { header:"Observações", key:"notes", width:45 }];
+    costs.addRows(expenses.map((item) => ({ description:item.description, category:item.category === "beer" ? "Cerveja" : "Churrasco", amount:item.amount_cents / 100, split:item.included_in_split?"Incluída":"Fora do rateio", payer:item.payer_name??"", notes:item.notes ?? "" })));
     costs.getColumn("amount").numFmt = 'R$ #,##0.00';
     const buffer = await workbook.xlsx.writeBuffer();
     return new Response(buffer, { headers:{ "Content-Type":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition":`attachment; filename="${filename}.xlsx"`, "Cache-Control":"private, no-store" } });
@@ -69,7 +62,7 @@ export async function GET(
     const document = new jsPDF();
     document.setFontSize(19); document.text("BRAZA - Relatorio financeiro", 14, 18);
     document.setFontSize(11); document.text(event.title, 14, 27);
-    document.text(`Total gasto: ${money(total)} | Recebido: ${money(received)}`, 14, 37);
+    document.text(`Total gasto: ${money(totalSpent)} | No rateio: ${money(total)} | Recebido: ${money(received)}`, 14, 37);
     document.setFontSize(9);
     let y = 49;
     document.text("Convidado", 14, y); document.text("Valor", 120, y); document.text("Status", 158, y); y += 7;

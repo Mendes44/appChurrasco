@@ -14,6 +14,7 @@ export function InviteForm({ token, guestName, alreadyAnswered, wasAttending, ad
   const someoneDoesNotDrink = primaryDrinks === "no" || (hasCompanion && companionDrinks === "no");
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
+    // O token identifica o convite sem expor dados de outros convidados.
     event.preventDefault();
     setSending(true);
     setStatus("");
@@ -23,7 +24,7 @@ export function InviteForm({ token, guestName, alreadyAnswered, wasAttending, ad
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         token,
-        phone: form.get("phone"),
+        phone: attending === "yes" ? form.get("phone") : "",
         attending: attending === "yes",
         companionName: attending === "yes" && hasCompanion ? form.get("companionName") : "",
         primaryDrinks: primaryDrinks === "yes",
@@ -50,8 +51,8 @@ export function InviteForm({ token, guestName, alreadyAnswered, wasAttending, ad
 
   return <form className="invite-form" onSubmit={submit}>
     <label>Convite individual<input value={guestName} disabled aria-label="Nome do convidado" /></label>
-    <label>Telefone com DDD<input type="tel" name="phone" required minLength={10} maxLength={20} inputMode="tel" autoComplete="tel" placeholder="(31) 99999-9999" /></label>
     <fieldset><legend>Você vai ao churrasco?</legend><div className="choice-row"><label><input type="radio" name="attending" checked={attending === "yes"} onChange={() => setAttending("yes")} /> Sim, eu vou</label><label><input type="radio" name="attending" checked={attending === "no"} onChange={() => setAttending("no")} /> Não vou</label></div></fieldset>
+    {attending === "yes" && <label>Telefone com DDD<input type="tel" name="phone" required minLength={10} maxLength={20} inputMode="tel" autoComplete="tel" placeholder="(31) 99999-9999" /></label>}
     {attending === "yes" && <fieldset><legend>Vai levar um acompanhante?</legend><div className="choice-row"><label><input type="radio" name="companion" checked={!hasCompanion} onChange={() => setHasCompanion(false)} /> Somente eu</label><label><input type="radio" name="companion" checked={hasCompanion} onChange={() => setHasCompanion(true)} /> Eu + 1</label></div></fieldset>}
     {attending === "yes" && hasCompanion && <label>Nome do acompanhante<input name="companionName" required minLength={2} maxLength={80} placeholder="Nome completo" /></label>}
     {attending === "yes" && <fieldset><legend>{guestName} vai beber?</legend><div className="choice-row"><label><input type="radio" name="primaryDrinks" checked={primaryDrinks === "yes"} onChange={() => setPrimaryDrinks("yes")} /> Sim</label><label><input type="radio" name="primaryDrinks" checked={primaryDrinks === "no"} onChange={() => setPrimaryDrinks("no")} /> Não</label></div></fieldset>}

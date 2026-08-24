@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   const pixHolder = String(body.pixHolder ?? "").trim();
   const grams = Number(body.gramsPerPerson);
   const beerLiters = Number(body.beerLitersPerDrinker ?? 1.5);
+  const rsvpDeadline = body.rsvpDeadline || null;
   if (
     title.length < 3 ||
     title.length > 100 ||
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     event_date: body.eventDate,
     grams_per_person: grams,
     beer_liters_per_drinker: beerLiters,
+    rsvp_deadline: rsvpDeadline,
   };
   
   let { error } = await context.database

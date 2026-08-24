@@ -9,19 +9,23 @@ O projeto foi construído com foco em portfólio: autenticação Google, autoriz
 - vários churrascos por organizador;
 - criação, edição e exclusão de eventos;
 - data, horário, endereço e quantidade de carne configuráveis;
-- convites individuais para titular e um acompanhante;
+- convites individuais e link geral compartilhável;
 - confirmação de presença e consumo de bebidas;
 - telefone do convidado, com edição administrativa;
 - painel atualizado automaticamente;
 - edição e exclusão administrativa de respostas;
 - cálculos de carnes, acompanhamentos, chopp, latas e garrafas;
-- checklist de compras salvo no navegador;
+- checklist sincronizado e itens de compra personalizados;
 - exportação da lista em PDF e Excel;
 - despesas gerais e de cerveja com rateio separado;
 - controle de pagamentos pendentes e confirmados;
+- despesas próprias opcionais fora do rateio;
+- prazo para confirmação, presença rápida e encerramento somente leitura;
+- histórico comparativo, progresso do evento e auditoria;
 - comprovantes compactados em armazenamento privado;
 - captura de notas diretamente pela lista de compras;
 - relatório individual e mensagem pronta para WhatsApp;
+- relatório completo com gráficos, impressão, PDF e Excel;
 - integração com Google Maps e Google Agenda;
 - layout responsivo com menu mobile.
 
@@ -139,6 +143,7 @@ Um avaliador pode testar o projeto desta forma:
 11. Conferir quem realmente compareceu e validar o rateio.
 12. Abrir a mensagem individual no WhatsApp.
 13. Reabrir o convite para testar Maps e Google Agenda.
+14. Abrir Relatório para conferir gráficos e exportar o documento completo.
 
 ## 5. Publicação na Vercel
 
@@ -180,6 +185,7 @@ npm.cmd run dev        # servidor de desenvolvimento
 npm.cmd run typecheck  # valida os tipos TypeScript
 npm.cmd run lint       # analisa qualidade e padrões
 npm.cmd run build      # gera a versão de produção
+npm.cmd run test:unit  # testa cálculos de rateio e compras
 ```
 
 ## Estrutura para estudo

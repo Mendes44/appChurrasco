@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Toast } from "@/components/Toast";
 type EventItem = {
+  // O tipo descreve os campos que podem ser exibidos e editados no painel.
   id: string;
   title: string;
   event_date: string;
@@ -14,14 +15,17 @@ type EventItem = {
   pix_key: string | null;
   pix_holder: string | null;
   status: "active" | "closed";
+  rsvp_deadline: string | null;
 };
 // Componente cliente responsável pelos formulários de criação, edição e exclusão.
-export function EventManager({ events }: { events: EventItem[] }) {
+export function EventManager({ events, metrics }: { events: EventItem[]; metrics:Record<string,{confirmed:number;attended:number;spent:number}> }) {
+  // O componente concentra criação, edição, encerramento e exclusão de eventos.
   const router = useRouter();
   const [editing, setEditing] = useState<EventItem | null>(null);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   async function save(event: React.FormEvent<HTMLFormElement>) {
+    // O mesmo formulário cria um evento novo ou atualiza o evento selecionado.
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
@@ -33,6 +37,7 @@ export function EventManager({ events }: { events: EventItem[] }) {
       beerLitersPerDrinker: Number(form.get("beerLiters")),
       pixKey: form.get("pixKey"),
       pixHolder: form.get("pixHolder"),
+      rsvpDeadline: form.get("rsvpDeadline") ? new Date(String(form.get("rsvpDeadline"))).toISOString() : null,
     };
     const response = await fetch(
       editing ? `/api/eventos/${editing.id}` : "/api/eventos",
@@ -52,11 +57,13 @@ export function EventManager({ events }: { events: EventItem[] }) {
     }
   }
   async function remove(id: string) {
+    // A API valida propriedade e relacionamentos antes de remover o evento.
     if (!confirm("Excluir este churrasco e todos os seus convidados?")) return;
     await fetch(`/api/eventos/${id}`, { method: "DELETE" });
     router.refresh();
   }
   async function toggleClosed(item: EventItem) {
+    // Eventos encerrados ficam disponíveis para consulta, sem novas alterações.
     const closing = item.status !== "closed";
     if (closing && !confirm("Encerrar este evento? Ele ficará disponível apenas para consulta.")) return;
     const response = await fetch(`/api/eventos/${item.id}/status`, {
@@ -73,6 +80,7 @@ export function EventManager({ events }: { events: EventItem[] }) {
     }
   }
   function localDate(value: string) {
+    // O input datetime local não aceita o sufixo de fuso retornado pelo banco.
     const date = new Date(value);
     return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
       .toISOString()
@@ -114,6 +122,7 @@ export function EventManager({ events }: { events: EventItem[] }) {
             Endereço
             <input name="address" defaultValue={editing?.address ?? ""} />
           </label>
+          <label>Prazo para confirmação<input type="datetime-local" name="rsvpDeadline" defaultValue={editing?.rsvp_deadline?localDate(editing.rsvp_deadline):""}/><small className="field-help">Após o prazo, novas respostas serão bloqueadas.</small></label>
           <label>
             Chave Pix
             <input
@@ -183,6 +192,7 @@ export function EventManager({ events }: { events: EventItem[] }) {
                   {item.address || "Sem endereço"}
                 </small>
                 <small className={item.status === "closed" ? "event-closed" : "event-active"}>{item.status === "closed" ? "Encerrado · somente leitura" : "Ativo"}</small>
+                <small>{metrics[item.id]?.confirmed??0} confirmados · {metrics[item.id]?.attended??0} presentes · {((metrics[item.id]?.spent??0)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</small>
               </div>
               <div className="row-actions">
                 <Link

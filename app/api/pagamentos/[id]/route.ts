@@ -1,5 +1,6 @@
 import { getAdminContext } from "@/lib/admin";
 import { NextResponse } from "next/server";
+import { writeAudit } from "@/lib/audit";
 
 // Atualiza o pagamento somente depois de confirmar que o convidado pertence ao organizador.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id:string }> }) {
@@ -15,5 +16,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (event.status === "closed") return NextResponse.json({ message:"Este evento está encerrado." }, { status:409 });
   const { error } = await context.database.from("guests").update({ paid_at:body.paid?new Date().toISOString():null }).eq("id",id);
   if (error) return NextResponse.json({ message:`Não foi possível atualizar (${error.code}).` }, { status:500 });
+  await writeAudit(context.database,guest.event_id,context.user.id,body.paid?"payment_confirmed":"payment_reopened",{guest_id:id});
   return NextResponse.json({ message:body.paid?"Pagamento confirmado.":"Pagamento marcado como pendente." });
 }

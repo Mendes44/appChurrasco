@@ -7,17 +7,20 @@ import { Toast } from "@/components/Toast";
 type Guest = { id:string; name:string; phone:string|null; companion_name:string|null; party_size:number; drinkers_count:number; brings_own_drink:boolean; attended:boolean|null };
 
 export function GuestEditor({ guests, readOnly=false }: { guests: Guest[]; readOnly?: boolean }) {
+  // O estado editing define qual cadastro está aberto no formulário de edição.
   const router = useRouter();
   const [editing, setEditing] = useState<Guest|null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [query, setQuery] = useState("");
   const editFormRef = useRef<HTMLFormElement>(null);
 
   // Assim que o formulário aparece, posiciona a tela nele inclusive no celular.
   useEffect(()=>{if(editing)editFormRef.current?.scrollIntoView({behavior:"smooth",block:"start"});},[editing]);
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
+    // O PATCH altera somente o convidado selecionado e preserva os demais registros.
     event.preventDefault(); if (!editing) return;
     setSending(true); setMessage("");
     const form = new FormData(event.currentTarget);
@@ -27,19 +30,23 @@ export function GuestEditor({ guests, readOnly=false }: { guests: Guest[]; readO
   }
 
   async function remove(guest: Guest) {
+    // A confirmação mostra o nome para reduzir o risco de apagar a pessoa errada.
     if (!confirm(`Excluir a resposta de ${guest.name}?`)) return;
     const response = await fetch(`/api/convidados/${guest.id}`, { method:"DELETE" });
     const result = await response.json(); setMessage(result.message); setIsError(!response.ok);
     if (response.ok) { setEditing(null); router.refresh(); }
   }
 
+  // A busca inclui titular e acompanhante e ignora diferenças entre maiúsculas.
+  const visibleGuests=guests.filter(guest=>`${guest.name} ${guest.companion_name??""}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR")));
   return <section className="card guest-admin">
     {readOnly&&<p className="readonly-notice">Evento encerrado: respostas disponíveis somente para consulta.</p>}
-    <div className="guest-management-list">{guests.map((guest) => <article key={guest.id}>
+    <label className="guest-search">Buscar convidado<input type="search" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Digite o nome ou acompanhante"/></label>
+    <div className="guest-management-list">{visibleGuests.map((guest) => <article key={guest.id}>
       <div><b>{guest.name}{guest.companion_name?` + ${guest.companion_name}`:""}</b><small>{guest.party_size===0?"Não vai":`${guest.party_size} pessoa(s) · ${guest.drinkers_count} bebem`}{guest.phone?` · ${guest.phone}`:" · telefone não informado"}</small></div>
       {!readOnly&&<div className="row-actions"><button className="primary" type="button" onClick={()=>{setEditing(guest);setMessage("")}}>Gerenciar</button><button className="danger-button" type="button" onClick={()=>remove(guest)}>Excluir</button></div>}
     </article>)}</div>
-    {!guests.length && <p className="empty-row">Nenhuma resposta recebida.</p>}
+    {!visibleGuests.length && <p className="empty-row">Nenhum convidado encontrado.</p>}
     {!readOnly&&editing && <form className="admin-form edit-response" id="editar-convidado" ref={editFormRef} key={editing.id} onSubmit={save}>
       <span className="eyebrow">GERENCIAR CONVIDADO</span><h2>Editar tudo</h2>
       <label>Nome do titular<input name="name" required minLength={2} maxLength={80} defaultValue={editing.name}/></label>

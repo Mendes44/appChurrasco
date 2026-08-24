@@ -5,7 +5,8 @@ import Image from "next/image";
 import { useState } from "react";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
-type AdminSection = "resumo" | "eventos" | "convidados" | "compras" | "financeiro";
+// O tipo limita as opções aceitas pelo menu e evita erros de digitação nas páginas.
+type AdminSection = "resumo" | "eventos" | "convidados" | "compras" | "financeiro" | "relatorio";
 
 const links: Array<{ key: AdminSection; href: string; label: string }> = [
   { key: "resumo", href: "/painel", label: "Resumo" },
@@ -13,6 +14,7 @@ const links: Array<{ key: AdminSection; href: string; label: string }> = [
   { key: "convidados", href: "/painel/convidados", label: "Convidados" },
   { key: "compras", href: "/painel/compras", label: "Compras" },
   { key: "financeiro", href: "/painel/financeiro", label: "Financeiro" },
+  { key: "relatorio", href: "/painel/relatorio", label: "Relatório" },
 ];
 
 // A navegação é compartilhada para manter o mesmo comportamento em todas as telas.

@@ -1,3 +1,4 @@
+// Encerra a sessão no servidor e retorna o navegador para a tela de entrada.
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 

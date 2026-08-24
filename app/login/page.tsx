@@ -1,3 +1,4 @@
+// Página pública de entrada. A autenticação efetiva acontece pelo Supabase.
 import { ADMIN_EMAIL } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { LoginButton } from "./LoginButton";

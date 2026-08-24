@@ -1,9 +1,11 @@
+// Transforma as confirmações em uma lista de compras persistente.
 import { AdminHeader } from "@/components/AdminHeader";
 import { getAdminContext } from "@/lib/admin";
 import { buildShoppingList } from "@/lib/shopping";
 import { redirect } from "next/navigation";
 import { ShoppingChecklist } from "./ShoppingChecklist";
 import { PurchaseReceiptForm } from "./PurchaseReceiptForm";
+import { CustomShoppingItems } from "./CustomShoppingItems";
 
 export const dynamic = "force-dynamic";
 
@@ -23,5 +25,6 @@ export default async function ShoppingPage({ searchParams }: { searchParams: Pro
   const list = buildShoppingList(people, drinkers, event?.grams_per_person ?? 350, Number(event?.beer_liters_per_drinker ?? 1.5));
   const {data:expenseData}=event?await context.database.from("expenses").select("id,description,amount_cents,receipt_path").eq("event_id",event.id).not("receipt_path","is",null).order("created_at",{ascending:false}):{data:[]};
   const receipts=await Promise.all((expenseData??[]).map(async item=>{const{data:signed}=await context.database.storage.from("receipts").createSignedUrl(item.receipt_path!,900);return{id:item.id,description:item.description,amount_cents:item.amount_cents,receipt_url:signed?.signedUrl??""};}));
-  return <main><AdminHeader active="compras" eventId={event?.id}/><section className="page-heading"><span className="eyebrow">{people} PESSOAS</span><h1>Lista de compras</h1><p>Quantidades sugeridas para {event?.title ?? "seu churrasco"}.</p></section><ShoppingChecklist eventId={event?.id ?? "sem-evento"} items={list} initialPurchased={event?.shopping_checked ?? []} readOnly={event?.status==="closed"}/>{event&&event.status!=="closed"&&<PurchaseReceiptForm eventId={event.id} receipts={receipts.filter(item=>item.receipt_url)}/>}<p className="shopping-note">Escolha chopp, latas ou garrafas acima. As marcações são salvas no evento.</p></main>;
+  const {data:customItems}=event?await context.database.from("event_shopping_items").select("id,name,quantity,checked").eq("event_id",event.id).order("created_at"):{data:[]};
+  return <main><AdminHeader active="compras" eventId={event?.id}/><section className="page-heading"><span className="eyebrow">{people} PESSOAS</span><h1>Lista de compras</h1><p>Quantidades sugeridas para {event?.title ?? "seu churrasco"}.</p></section><ShoppingChecklist eventId={event?.id ?? "sem-evento"} items={list} initialPurchased={event?.shopping_checked ?? []} readOnly={event?.status==="closed"}/>{event&&<CustomShoppingItems eventId={event.id} items={customItems??[]} readOnly={event.status==="closed"}/>} {event&&event.status!=="closed"&&<PurchaseReceiptForm eventId={event.id} receipts={receipts.filter(item=>item.receipt_url)}/>}<p className="shopping-note">Escolha chopp, latas ou garrafas acima. As marcações são salvas no evento.</p></main>;
 }

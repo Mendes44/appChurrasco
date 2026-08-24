@@ -1,3 +1,4 @@
+// Busca os dados privados antes de renderizar o painel financeiro.
 import { AdminHeader } from "@/components/AdminHeader";
 import { getAdminContext } from "@/lib/admin";
 import { redirect } from "next/navigation";
@@ -32,7 +33,7 @@ export default async function FinancePage({
   const { data: expenseData } = event
     ? await context.database
         .from("expenses")
-        .select("id,description,category,amount_cents,receipt_path,notes")
+        .select("id,description,category,amount_cents,receipt_path,notes,payer_name,payment_method,purchased_at,included_in_split,expense_group")
         .eq("event_id", event.id)
         .order("created_at", { ascending: false })
     : { data: [] };

@@ -1,3 +1,4 @@
+// Informa que a conta Google autenticada não possui permissão administrativa.
 import Link from "next/link";
 
 export default function AccessDenied() {

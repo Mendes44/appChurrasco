@@ -8,11 +8,13 @@ type ShoppingItem = readonly [string, string];
 
 // As marcações são salvas no evento para acompanharem o usuário em qualquer aparelho.
 export function ShoppingChecklist({ eventId, items, initialPurchased, readOnly=false }: { eventId: string; items: readonly ShoppingItem[]; initialPurchased: string[]; readOnly?: boolean }) {
+  // purchased espelha no navegador os itens já marcados no banco.
   const [purchased, setPurchased] = useState<string[]>(initialPurchased);
   const [beverage, setBeverage] = useState<"chopp"|"latas"|"garrafas">("chopp");
   const [saveMessage, setSaveMessage] = useState("");
 
   const purchasedSet = useMemo(() => new Set(purchased), [purchased]);
+  // Somente uma apresentação de cerveja é mostrada por vez para evitar duplicidade.
   const visibleItems = useMemo(() => items.filter(([name]) => {
     if (name === "Chopp") return beverage === "chopp";
     if (name.startsWith("Latas")) return beverage === "latas";
@@ -21,6 +23,7 @@ export function ShoppingChecklist({ eventId, items, initialPurchased, readOnly=f
   }), [items, beverage]);
 
   async function persist(next: string[]) {
+    // A atualização otimista deixa a marcação imediata e depois confirma no servidor.
     const previous = purchased;
     setPurchased(next);
     if (eventId === "sem-evento") return;
@@ -32,12 +35,14 @@ export function ShoppingChecklist({ eventId, items, initialPurchased, readOnly=f
   }
 
   function toggle(name: string) {
+    // Set evita itens duplicados e simplifica adicionar ou retirar a marcação.
     if (readOnly) return;
     const next = purchasedSet.has(name) ? purchased.filter((item) => item !== name) : [...purchased, name];
     void persist(next);
   }
 
   function clear() {
+    // Limpa somente os itens visíveis e mantém a escolha da apresentação da cerveja.
     if (readOnly) return;
     void persist([]);
   }
