@@ -15,8 +15,8 @@ export default async function GuestsPage({ searchParams }: { searchParams: Promi
   if (evento && /^[0-9a-f-]{36}$/i.test(evento)) eventQuery = eventQuery.eq("id", evento);
   const { data: events } = await eventQuery.order("created_at", { ascending:false }).limit(1);
   const event = events?.[0];
-  const { data } = event ? await context.database.from("guests").select("id,name,phone,companion_name,party_size,drinkers_count,brings_own_drink,attended").eq("event_id", event.id).order("created_at") : { data:[] };
+  const { data } = event ? await context.database.from("guests").select("id,name,phone,companion_name,party_size,drinkers_count,brings_own_drink,attended,added_by_admin,participation_notes").eq("event_id", event.id).order("created_at") : { data:[] };
   const { data:invitations } = event ? await context.database.from("invitations").select("id,guest_name,token,responded_at").eq("event_id",event.id).order("created_at",{ascending:false}) : {data:[]};
   const readOnly=event?.status==="closed";
-  return <main><AdminHeader active="convidados" eventId={event?.id}/><section className="page-heading"><span className="eyebrow">{event?.title??"EVENTO"}</span><h1>Convidados</h1><p>Crie convites e corrija respostas quando alguém mudar de planos.</p></section><GuestEditor guests={data??[]} readOnly={readOnly}/>{event&&<InviteManager eventId={event.id} inviteToken={event.invite_token} invitations={invitations??[]} readOnly={readOnly}/>}</main>;
+  return <main><AdminHeader active="convidados" eventId={event?.id}/><section className="page-heading"><span className="eyebrow">{event?.title??"EVENTO"}</span><h1>Convidados</h1><p>Crie convites, registre quem apareceu depois e corrija respostas.</p></section><GuestEditor eventId={event?.id} guests={data??[]} readOnly={readOnly}/>{event&&<InviteManager eventId={event.id} inviteToken={event.invite_token} invitations={invitations??[]} readOnly={readOnly}/>}</main>;
 }

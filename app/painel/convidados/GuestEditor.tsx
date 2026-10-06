@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Toast } from "@/components/Toast";
 
-type Guest = { id:string; name:string; phone:string|null; companion_name:string|null; party_size:number; drinkers_count:number; brings_own_drink:boolean; attended:boolean|null };
+type Guest = { id:string; name:string; phone:string|null; companion_name:string|null; party_size:number; drinkers_count:number; brings_own_drink:boolean; attended:boolean|null; added_by_admin?:boolean; participation_notes?:string|null };
 
-export function GuestEditor({ guests, readOnly=false }: { guests: Guest[]; readOnly?: boolean }) {
+export function GuestEditor({ eventId, guests, readOnly=false }: { eventId?:string; guests: Guest[]; readOnly?: boolean }) {
   // O estado editing define qual cadastro está aberto no formulário de edição.
   const router = useRouter();
   const [editing, setEditing] = useState<Guest|null>(null);
@@ -15,6 +15,14 @@ export function GuestEditor({ guests, readOnly=false }: { guests: Guest[]; readO
   const [isError, setIsError] = useState(false);
   const [query, setQuery] = useState("");
   const editFormRef = useRef<HTMLFormElement>(null);
+
+  async function addGuest(event:React.FormEvent<HTMLFormElement>){
+    event.preventDefault();setSending(true);setMessage("");
+    const element=event.currentTarget;const form=new FormData(element);
+    const response=await fetch("/api/convidados",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({eventId,name:form.get("name"),phone:form.get("phone"),companionName:form.get("companionName"),partySize:Number(form.get("partySize")),drinkersCount:Number(form.get("drinkersCount")),participationNotes:form.get("participationNotes")})});
+    const result=await response.json();setMessage(result.message);setIsError(!response.ok);setSending(false);
+    if(response.ok){element.reset();router.refresh();}
+  }
 
   // Assim que o formulário aparece, posiciona a tela nele inclusive no celular.
   useEffect(()=>{if(editing)editFormRef.current?.scrollIntoView({behavior:"smooth",block:"start"});},[editing]);
@@ -41,9 +49,18 @@ export function GuestEditor({ guests, readOnly=false }: { guests: Guest[]; readO
   const visibleGuests=guests.filter(guest=>`${guest.name} ${guest.companion_name??""}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR")));
   return <section className="card guest-admin">
     {readOnly&&<p className="readonly-notice">Evento encerrado: respostas disponíveis somente para consulta.</p>}
+    {!readOnly&&eventId&&<details className="manual-guest"><summary><span><span className="eyebrow">CADASTRO POSTERIOR</span><b>Adicionar quem foi sem convite</b></span><span className="disclosure-action">Abrir</span></summary><form className="admin-form" onSubmit={addGuest}>
+      <label>Nome do titular<input name="name" required minLength={2} maxLength={80}/></label>
+      <label>Telefone com DDD (opcional)<input name="phone" type="tel" inputMode="tel"/></label>
+      <label>Total de pessoas<select name="partySize" defaultValue="1"><option value="1">Foi sozinho</option><option value="2">Foi com acompanhante</option></select></label>
+      <label>Nome do acompanhante (se houver)<input name="companionName" maxLength={80}/></label>
+      <label>Quantas pessoas beberam?<select name="drinkersCount" defaultValue="0"><option value="0">Nenhuma</option><option value="1">1 pessoa</option><option value="2">2 pessoas</option></select></label>
+      <label>Observação da participação<textarea name="participationNotes" maxLength={300} placeholder="Ex.: participou somente no sábado"/></label>
+      <button className="primary" disabled={sending}>{sending?"Adicionando...":"Adicionar convidado"}</button>
+    </form></details>}
     <label className="guest-search">Buscar convidado<input type="search" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Digite o nome ou acompanhante"/></label>
     <div className="guest-management-list">{visibleGuests.map((guest) => <article key={guest.id}>
-      <div><b>{guest.name}{guest.companion_name?` + ${guest.companion_name}`:""}</b><small>{guest.party_size===0?"Não vai":`${guest.party_size} pessoa(s) · ${guest.drinkers_count} bebem`}{guest.phone?` · ${guest.phone}`:" · telefone não informado"}</small></div>
+      <div><b>{guest.name}{guest.companion_name?` + ${guest.companion_name}`:""}</b><small>{guest.party_size===0?"Não vai":`${guest.party_size} pessoa(s) · ${guest.drinkers_count} bebem`}{guest.phone?` · ${guest.phone}`:" · telefone não informado"}{guest.added_by_admin?" · adicionado depois":""}</small>{guest.participation_notes&&<small>{guest.participation_notes}</small>}</div>
       {!readOnly&&<div className="row-actions"><button className="primary" type="button" onClick={()=>{setEditing(guest);setMessage("")}}>Gerenciar</button><button className="danger-button" type="button" onClick={()=>remove(guest)}>Excluir</button></div>}
     </article>)}</div>
     {!visibleGuests.length && <p className="empty-row">Nenhum convidado encontrado.</p>}

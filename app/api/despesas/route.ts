@@ -13,6 +13,8 @@ export async function POST(request: Request) {
   const eventId = String(form.get("eventId") ?? "");
   const description = String(form.get("description") ?? "").trim();
   const category = String(form.get("category") ?? "");
+  const splitMode = String(form.get("splitMode") ?? category);
+  const participantIds = [...new Set(form.getAll("participantIds").map(String))];
   const amountCents = Math.round(Number(form.get("amount")) * 100);
   const notes = String(form.get("notes") ?? "").trim();
   const payerName = String(form.get("payerName") ?? "").trim();
@@ -21,10 +23,15 @@ export async function POST(request: Request) {
   const includedInSplit = form.get("includedInSplit") !== "false";
   const expenseGroup = String(form.get("expenseGroup") ?? "Outros").trim();
   const receipt = form.get("receipt");
-  if (!/^[0-9a-f-]{36}$/i.test(eventId) || description.length < 2 || description.length > 120 || notes.length > 500 || payerName.length > 100 || paymentMethod.length > 40 || expenseGroup.length>60 || (purchasedAt&&!/^\d{4}-\d{2}-\d{2}$/.test(purchasedAt)) || !["general","beer"].includes(category) || !Number.isSafeInteger(amountCents) || amountCents <= 0) return NextResponse.json({ message:"Revise os dados da despesa." }, { status:400 });
+  if (!/^[0-9a-f-]{36}$/i.test(eventId) || description.length < 2 || description.length > 120 || notes.length > 500 || payerName.length > 100 || paymentMethod.length > 40 || expenseGroup.length>60 || (purchasedAt&&!/^\d{4}-\d{2}-\d{2}$/.test(purchasedAt)) || !["general","beer"].includes(category) || !["general","beer","selected"].includes(splitMode) || participantIds.some(id=>!/^[0-9a-f-]{36}$/i.test(id)) || !Number.isSafeInteger(amountCents) || amountCents <= 0) return NextResponse.json({ message:"Revise os dados da despesa." }, { status:400 });
   const { data: ownedEvent } = await context.database.from("events").select("id,status").eq("id", eventId).eq("owner_id", context.user.id).maybeSingle();
   if (!ownedEvent) return NextResponse.json({ message:"Evento não encontrado." }, { status:404 });
   if (ownedEvent.status === "closed") return NextResponse.json({ message:"Este evento está encerrado e não pode ser alterado." }, { status:409 });
+  if(includedInSplit&&splitMode==="selected"){
+    if(!participantIds.length)return NextResponse.json({message:"Selecione quem participará desta despesa."},{status:400});
+    const{data:selectedGuests}=await context.database.from("guests").select("id").eq("event_id",eventId).in("id",participantIds);
+    if((selectedGuests??[]).length!==participantIds.length)return NextResponse.json({message:"Há convidados inválidos na seleção."},{status:400});
+  }
 
   let receiptPath: string|null = null;
   if (receipt instanceof File && receipt.size > 0) {
@@ -35,11 +42,19 @@ export async function POST(request: Request) {
     const { error: uploadError } = await context.database.storage.from("receipts").upload(receiptPath, bytes, { contentType:receipt.type, upsert:false });
     if (uploadError) return NextResponse.json({ message:"Não foi possível armazenar o comprovante." }, { status:500 });
   }
-  const { error } = await context.database.from("expenses").insert({ event_id:eventId, description, category, amount_cents:amountCents, receipt_path:receiptPath, notes:notes || null, payer_name:payerName||null, payment_method:paymentMethod||null, purchased_at:purchasedAt||null, included_in_split:includedInSplit, expense_group:expenseGroup||"Outros" });
+  const { data:created, error } = await context.database.from("expenses").insert({ event_id:eventId, description, category, split_mode:splitMode, amount_cents:amountCents, receipt_path:receiptPath, notes:notes || null, payer_name:payerName||null, payment_method:paymentMethod||null, purchased_at:purchasedAt||null, included_in_split:includedInSplit, expense_group:expenseGroup||"Outros" }).select("id").single();
   if (error) {
     if (receiptPath) await context.database.storage.from("receipts").remove([receiptPath]);
     console.error("expense_create_failed", error.code);
     return NextResponse.json({ message:`Não foi possível salvar a despesa (${error.code}).` }, { status:500 });
+  }
+  if(created&&includedInSplit&&splitMode==="selected"){
+    const{error:participantError}=await context.database.from("expense_participants").insert(participantIds.map(guestId=>({expense_id:created.id,guest_id:guestId})));
+    if(participantError){
+      await context.database.from("expenses").delete().eq("id",created.id);
+      if(receiptPath)await context.database.storage.from("receipts").remove([receiptPath]);
+      return NextResponse.json({message:"Não foi possível salvar os participantes do rateio."},{status:500});
+    }
   }
   await writeAudit(context.database,eventId,context.user.id,"expense_created",{description,amount_cents:amountCents,included_in_split:includedInSplit});
   return NextResponse.json({ message:"Despesa adicionada." });

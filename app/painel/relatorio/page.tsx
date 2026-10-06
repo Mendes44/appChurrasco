@@ -1,6 +1,6 @@
 import { AdminHeader } from "@/components/AdminHeader";
 import { getAdminContext } from "@/lib/admin";
-import { calculateCharges } from "@/lib/finance";
+import { calculateDetailedCharges } from "@/lib/finance";
 import { buildShoppingList } from "@/lib/shopping";
 import { redirect } from "next/navigation";
 import { ReportActions } from "./ReportActions";
@@ -23,7 +23,7 @@ export default async function CompleteReportPage({searchParams}:{searchParams:Pr
   // As consultas independentes são executadas juntas para reduzir o tempo da página.
   const[{data:guests},{data:expenses},{data:customItems}]=await Promise.all([
     context.database.from("guests").select("id,name,companion_name,party_size,drinkers_count,is_attending,attended,paid_at").eq("event_id",event.id).order("name"),
-    context.database.from("expenses").select("description,category,amount_cents,included_in_split,expense_group").eq("event_id",event.id).order("created_at"),
+    context.database.from("expenses").select("id,description,category,split_mode,amount_cents,included_in_split,expense_group,expense_participants(guest_id)").eq("event_id",event.id).order("created_at"),
     context.database.from("event_shopping_items").select("name,quantity,checked").eq("event_id",event.id).order("created_at"),
   ]);
 
@@ -37,7 +37,9 @@ export default async function CompleteReportPage({searchParams}:{searchParams:Pr
   const generalTotal=(expenses??[]).filter(item=>item.included_in_split&&item.category==="general").reduce((sum,item)=>sum+item.amount_cents,0);
   const beerTotal=(expenses??[]).filter(item=>item.included_in_split&&item.category==="beer").reduce((sum,item)=>sum+item.amount_cents,0);
   const totalSpent=(expenses??[]).reduce((sum,item)=>sum+item.amount_cents,0);
-  const{charges}=calculateCharges(present,generalTotal,beerTotal);
+  const detailedExpenses=(expenses??[]).map(item=>({...item,participant_ids:(item.expense_participants??[]).map(row=>row.guest_id)}));
+  const splitGuests=(guests??[]).map(guest=>({...guest,included_by_default:guest.attended??guest.is_attending}));
+  const{charges}=calculateDetailedCharges(splitGuests,detailedExpenses);
   const received=charges.filter(charge=>charge.paid_at).reduce((sum,charge)=>sum+charge.cents,0);
   const splitTotal=charges.reduce((sum,charge)=>sum+charge.cents,0);
   const pending=splitTotal-received;

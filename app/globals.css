@@ -2956,3 +2956,10 @@ button:focus-visible,
     transition: none;
   }
 }
+/* Seleção nominal usada no rateio de despesas específicas. */
+.participant-picker{border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:9px;max-height:260px;overflow:auto}
+.participant-picker legend{font-weight:700;padding:0 6px}
+.manual-guest{margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:20px}
+.manual-guest>summary,.charge-breakdown>summary{cursor:pointer}
+.charge-breakdown{margin-top:6px}
+.charge-breakdown small{display:block;margin-top:4px}

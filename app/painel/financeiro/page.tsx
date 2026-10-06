@@ -33,7 +33,7 @@ export default async function FinancePage({
   const { data: expenseData } = event
     ? await context.database
         .from("expenses")
-        .select("id,description,category,amount_cents,receipt_path,notes,payer_name,payment_method,purchased_at,included_in_split,expense_group")
+        .select("id,description,category,split_mode,amount_cents,receipt_path,notes,payer_name,payment_method,purchased_at,included_in_split,expense_group,expense_participants(guest_id)")
         .eq("event_id", event.id)
         .order("created_at", { ascending: false })
     : { data: [] };
@@ -46,7 +46,7 @@ export default async function FinancePage({
           .createSignedUrl(item.receipt_path, 900);
         receipt_url = data?.signedUrl ?? null;
       }
-      return { ...item, receipt_url };
+      return { ...item, participant_ids:(item.expense_participants??[]).map(row=>row.guest_id), receipt_url };
     }),
   );
   return (

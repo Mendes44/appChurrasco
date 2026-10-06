@@ -1,6 +1,6 @@
 import { getAdminContext } from "@/lib/admin";
 import { NextResponse } from "next/server";
-import { calculateCharges } from "@/lib/finance";
+import { calculateDetailedCharges } from "@/lib/finance";
 
 export const runtime = "nodejs";
 
@@ -24,15 +24,13 @@ export async function GET(
   if (!event) return NextResponse.json({ message: "Evento não encontrado." }, { status: 404 });
 
   const [{ data: guestData }, { data: expenseData }] = await Promise.all([
-    context.database.from("guests").select("name,party_size,drinkers_count,is_attending,attended,paid_at").eq("event_id", event.id).order("created_at"),
-    context.database.from("expenses").select("description,category,amount_cents,notes,payer_name,payment_method,purchased_at,included_in_split").eq("event_id", event.id).order("created_at"),
+    context.database.from("guests").select("id,name,party_size,drinkers_count,is_attending,attended,paid_at").eq("event_id", event.id).order("created_at"),
+    context.database.from("expenses").select("id,description,category,split_mode,amount_cents,notes,payer_name,payment_method,purchased_at,included_in_split,expense_participants(guest_id)").eq("event_id", event.id).order("created_at"),
   ]);
-  const guests = (guestData ?? []).filter((guest) => guest.attended ?? guest.is_attending);
-  const expenses = expenseData ?? [];
-  const generalTotal = expenses.filter((item) => item.included_in_split && item.category === "general").reduce((sum, item) => sum + item.amount_cents, 0);
-  const beerTotal = expenses.filter((item) => item.included_in_split && item.category === "beer").reduce((sum, item) => sum + item.amount_cents, 0);
-  const {charges}=calculateCharges(guests,generalTotal,beerTotal);
-  const total = generalTotal + beerTotal;
+  const guests = (guestData ?? []).map((guest) => ({...guest,included_by_default:guest.attended ?? guest.is_attending}));
+  const expenses = (expenseData ?? []).map(item=>({...item,participant_ids:(item.expense_participants??[]).map(row=>row.guest_id)}));
+  const {charges}=calculateDetailedCharges(guests,expenses);
+  const total = charges.reduce((sum,guest)=>sum+guest.cents,0);
   const totalSpent = expenses.reduce((sum,item)=>sum+item.amount_cents,0);
   const received = charges.filter((guest) => guest.paid_at).reduce((sum, guest) => sum + guest.cents, 0);
   const { format } = await params;

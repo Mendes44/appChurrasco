@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { compressReceipt } from "@/lib/compress-receipt";
 import { Toast } from "@/components/Toast";
-import { calculateCharges } from "@/lib/finance";
+import { calculateDetailedCharges } from "@/lib/finance";
 
 
 export type Expense = {
@@ -12,6 +12,8 @@ export type Expense = {
   id: string;
   description: string;
   category: "general" | "beer";
+  split_mode: "general"|"beer"|"selected";
+  participant_ids: string[];
   amount_cents: number;
   receipt_url: string | null;
   notes: string | null;
@@ -32,6 +34,7 @@ export type FinanceGuest = {
   attended: boolean | null;
   paid_at: string | null;
 };
+type FinanceCharge=FinanceGuest&{cents:number;breakdown:{expense_id:string;description:string;cents:number}[]};
 
 const money = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -65,12 +68,12 @@ export function FinanceManager({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"name"|"amount">("name");
   const [isError, setIsError] = useState(false);
+  const [splitMode,setSplitMode]=useState<"general"|"beer"|"selected">("general");
 
   // Até a conferência real ser feita, a confirmação do convite funciona como previsão.
   // Depois que attended recebe true ou false, a presença real passa a prevalecer.
-  const attending = guests.filter(
-    (guest) => guest.attended ?? guest.is_attending,
-  );
+  const attending = guests.filter((guest) => guest.attended ?? guest.is_attending);
+  const splitGuests=guests.map(guest=>({...guest,included_by_default:guest.attended??guest.is_attending}));
   const generalTotal = expenses
     .filter((item) => item.included_in_split && item.category === "general")
     .reduce((sum, item) => sum + item.amount_cents, 0);
@@ -80,9 +83,11 @@ export function FinanceManager({
   const expenseTotal = expenses.reduce((sum,item)=>sum+item.amount_cents,0);
   // Despesas próprias aparecem no total gasto, mas não são cobradas dos convidados.
   const excludedTotal = expenseTotal-generalTotal-beerTotal;
-  const split=useMemo(()=>calculateCharges(attending,generalTotal,beerTotal),[attending,generalTotal,beerTotal]);
-  // A função central de rateio devolve contagens, valores unitários e cobranças exatas.
-  const {people,drinkers,generalPerPerson,beerPerDrinker,charges}=split;
+  const {charges}=useMemo(()=>calculateDetailedCharges(splitGuests,expenses),[splitGuests,expenses]);
+  const people=attending.reduce((sum,guest)=>sum+guest.party_size,0);
+  const drinkers=attending.reduce((sum,guest)=>sum+guest.drinkers_count,0);
+  const generalPerPerson=people?generalTotal/people:0;
+  const beerPerDrinker=drinkers?beerTotal/drinkers:0;
   const paidCharges = charges.filter((guest) => guest.paid_at);
   const paidTotal = paidCharges.reduce((sum, guest) => sum + guest.cents, 0);
   const pendingTotal = charges.reduce((sum, guest) => sum + guest.cents, 0) - paidTotal;
@@ -120,6 +125,7 @@ export function FinanceManager({
     setSending(false);
     if (response.ok) {
       formElement.reset();
+      setSplitMode("general");
       router.refresh();
     }
   }
@@ -163,7 +169,7 @@ export function FinanceManager({
     if (response.ok) router.refresh();
   }
 
-  function whatsapp(guest: FinanceGuest & { cents: number }) {
+  function whatsapp(guest: FinanceCharge) {
     // Sem telefone não existe destino seguro para montar o endereço do WhatsApp.
     if (!guest.phone) return null;
 
@@ -171,14 +177,10 @@ export function FinanceManager({
     if (digits.length <= 11) digits = `55${digits}`;
 
     // Os subtotais explicam a cobrança sem obrigar o convidado a recalcular valores por pessoa.
-    const generalShare = Math.round(generalPerPerson * guest.party_size);
-    const beerShare = guest.cents - generalShare;
     const companionDetails = guest.party_size > 1
       ? "Este valor já inclui você e seu acompanhante."
       : "Este valor corresponde à sua participação no Churras.";
-    const beerDetails = guest.drinkers_count > 0
-      ? `\n• Cerveja: ${money(beerShare)}`
-      : "";
+    const detailLines=guest.breakdown.map(item=>`• ${item.description}: ${money(item.cents)}`).join("\n");
     const pixDetails = pixKey
       ? `\n\n*Pagamento via Pix*\nChave: ${pixKey}${pixHolder ? `\nTitular: ${pixHolder}` : ""}`
       : "";
@@ -192,7 +194,7 @@ O rateio do ${eventTitle} foi concluído.
 ${companionDetails}
 
 Resumo do seu rateio:
-• Churrasco: ${money(generalShare)}${beerDetails}${pixDetails}
+${detailLines}${pixDetails}
 
 Obrigado!`;
 
@@ -271,11 +273,14 @@ Obrigado!`;
             </label>
             <label>
               Tipo de rateio
-              <select name="category" defaultValue="general">
+              <select name="splitMode" value={splitMode} onChange={event=>setSplitMode(event.target.value as typeof splitMode)}>
                 <option value="general">Geral — dividir entre todos</option>
                 <option value="beer">Cerveja — somente quem bebeu</option>
+                <option value="selected">Selecionar convidados desta despesa</option>
               </select>
+              <input type="hidden" name="category" value={splitMode==="beer"?"beer":"general"}/>
             </label>
+            {splitMode==="selected"&&<fieldset className="participant-picker"><legend>Quem deve pagar esta despesa?</legend>{guests.map(guest=><label className="check-label" key={guest.id}><input type="checkbox" name="participantIds" value={guest.id}/>{guest.name} ({guest.party_size||1} pessoa(s){guest.attended===false?" · não compareceu":""})</label>)}{!guests.length&&<small>Nenhum convidado disponível. Cadastre alguém primeiro.</small>}</fieldset>}
             <label>Categoria<select name="expenseGroup" defaultValue="Carnes"><option>Carnes</option><option>Acompanhamentos</option><option>Bebidas sem álcool</option><option>Cerveja</option><option>Descartáveis</option><option>Decoração</option><option>Transporte</option><option>Aluguel</option><option>Outros</option></select></label>
             <label>
               Valor pago
@@ -327,7 +332,7 @@ Obrigado!`;
                 <span>
                   <b>{item.description}</b>
                   <small>
-                    {item.category === "beer" ? "Cerveja" : "Geral"} ·{" "}
+                    {item.split_mode==="selected"?"Convidados selecionados":item.split_mode === "beer" ? "Quem bebeu" : "Todos os presentes"} ·{" "}
                     {money(item.amount_cents)}
                   </small>
                   {item.expense_group&&<small>{item.expense_group}</small>}
@@ -402,9 +407,8 @@ Obrigado!`;
           <div className="finance-export"><span>Exportar relatório</span><a className="secondary link-button" href={`/api/exportar-financeiro/pdf?evento=${eventId}`}>PDF</a><a className="primary link-button" href={`/api/exportar-financeiro/xlsx?evento=${eventId}`}>Excel</a></div>
         </div>
         <p className="rate-note">
-          As despesas gerais são divididas por todos os presentes. A cerveja é
-          cobrada somente de quem bebeu. Pode ocorrer diferença de centavos por
-          arredondamento.
+          Cada despesa é dividida conforme sua regra: todos os presentes, quem
+          bebeu ou convidados selecionados. Abra o detalhamento para conferir cada parcela.
         </p>
         <div className="charge-list">
           {filteredCharges.map((guest) => {
@@ -418,6 +422,7 @@ Obrigado!`;
                     {guest.party_size} pessoa(s) · {guest.drinkers_count} bebem
                   </small>
                   <small className={guest.paid_at?"payment-paid":"payment-pending"}>{guest.paid_at?`Pago em ${new Date(guest.paid_at).toLocaleDateString("pt-BR")}`:"Pagamento pendente"}</small>
+                  <details className="charge-breakdown"><summary>Ver memória de cálculo</summary>{guest.breakdown.map(item=><small key={item.expense_id}>{item.description}: {money(item.cents)}</small>)}</details>
                 </span>
                 <strong>{money(guest.cents)}</strong>
                 <div className="charge-actions">{guest.paid_at ? (url && <a className="secondary link-button" href={url} target="_blank" rel="noreferrer">Ver mensagem</a>) : reminderUrl ? <a className="primary link-button" href={reminderUrl} target="_blank" rel="noreferrer">Enviar lembrete</a> : <span className="missing-phone">Cadastre o telefone</span>}{!readOnly && <button className={guest.paid_at?"secondary":"payment-button"} type="button" onClick={()=>setPaid(guest,!guest.paid_at)}>{guest.paid_at?"Marcar pendente":"Marcar como pago"}</button>}</div>
